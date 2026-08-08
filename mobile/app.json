@@ -1,0 +1,64 @@
+{
+  "expo": {
+    "name": "Cargo",
+    "slug": "cargo",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.cargo.app"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#6366f1"
+      },
+      "package": "com.cargo.app"
+    },
+    "plugins": [
+      [
+        "expo-navigation-bar",
+        {
+          "visibility": "hidden",
+          "behavior": "overlay-swipe",
+          "position": "absolute",
+          "backgroundColor": "#ffffff",
+          "barStyle": "dark"
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#6366f1"
+        }
+      ],
+      "expo-font"
+    ],
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "extra": {
+      "expo-navigation-bar": {
+        "visibility": "hidden",
+        "behavior": "overlay-swipe",
+        "position": "absolute",
+        "backgroundColor": "#ffffff",
+        "barStyle": "dark"
+      },
+      "eas": {
+        "projectId": "0119ec85-53e0-426f-97fd-361333237ea6"
+      }
+    }
+  }
+}

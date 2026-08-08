@@ -1,0 +1,7 @@
+{
+  "extends": "expo/tsconfig.base",
+  "compilerOptions": {
+    "strict": true
+  }
+}
+//AQ.Ab8RN6LtrNoLthm6qe2HojMIIe7NWxqtZ--L8m1CZU4tsDSmCA
