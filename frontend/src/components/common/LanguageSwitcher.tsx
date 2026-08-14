@@ -25,7 +25,7 @@ export default function LanguageSwitcher() {
     i18n.changeLanguage(code)
     localStorage.setItem('language', code)
     // Sayfayı yenile - çevirilerin tamamen güncellenmesi için
-    window.location.reload()
+  //  window.location.reload() 
   }
 
   const currentLang = languages.find(l => l.code === i18n.language) || languages[0]
