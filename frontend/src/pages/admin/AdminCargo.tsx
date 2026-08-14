@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'react-hot-toast'
 import { useAuth } from '../../context/AuthContext'
-import QRCodeDisplay from '../../components/common/QRCodeDisplay'
 import { 
   PlusIcon, 
   XMarkIcon,
@@ -13,6 +12,7 @@ import {
   TruckIcon,
   CheckCircleIcon,
   ExclamationTriangleIcon,
+  TrashIcon,
 } from '@heroicons/react/24/outline'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001'
@@ -511,17 +511,16 @@ export default function AdminCargo() {
               <th className="px-4 py-3 text-left text-sm font-semibold text-gray-600">{t('shipments.status')}</th>
               <th className="px-4 py-3 text-left text-sm font-semibold text-gray-600">{t('shipments.route')}</th>
               <th className="px-4 py-3 text-left text-sm font-semibold text-gray-600">{t('common.actions')}</th>
-              <th className="px-4 py-3 text-left text-sm font-semibold text-gray-600">{t('shipments.qr')}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200">
             {loading ? (
               <tr>
-                <td colSpan={10} className="text-center py-8 text-gray-500">{t('common.loading')}</td>
+                <td colSpan={9} className="text-center py-8 text-gray-500">{t('common.loading')}</td>
               </tr>
             ) : filteredShipments.length === 0 ? (
               <tr>
-                <td colSpan={10} className="text-center py-8 text-gray-500">{t('common.noData')}</td>
+                <td colSpan={9} className="text-center py-8 text-gray-500">{t('common.noData')}</td>
               </tr>
             ) : (
               filteredShipments.map((shipment) => (
@@ -565,33 +564,15 @@ export default function AdminCargo() {
                     </div>
                   </td>
                   <td className="px-4 py-3">
-                    <div className="flex gap-2">
+                    <div className="flex items-center">
                       <button 
-                        className="text-blue-500 hover:text-blue-700 text-sm"
-                        onClick={() => openRouteModal(shipment)}
-                      >
-                        {t('shipments.route') || 'Ugur'}
-                      </button>
-                      <button 
-                        className="text-red-500 hover:text-red-700 text-sm"
+                        className="text-red-500 hover:text-red-700 transition-colors p-1.5 rounded-lg hover:bg-red-50"
                         onClick={() => handleDelete(shipment.id)}
+                        title={t('common.delete') || 'Ýok et'}
                       >
-                        {t('common.delete') || 'Ýok et'}
+                        <TrashIcon className="h-5 w-5" />
                       </button>
                     </div>
-                  </td>
-                  <td className="px-4 py-3">
-                    <QRCodeDisplay
-                      trackingCode={shipment.trackingCode}
-                      qrCode={shipment.qrCode || ''}
-                      shipmentData={{
-                        senderName: shipment.senderName,
-                        receiverName: shipment.receiverName,
-                        receiverPhone: shipment.receiverPhone,
-                        weight: shipment.weight,
-                        route: shipment.route,
-                      }}
-                    />
                   </td>
                 </tr>
               ))

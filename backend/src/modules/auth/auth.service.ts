@@ -17,16 +17,16 @@ export class AuthService {
     const user = await this.userRepository.findOne({ where: { phoneNumber } });
     
     if (!user) {
-      throw new UnauthorizedException('Telefon numarası bulunamadı');
+      throw new UnauthorizedException('Telefon nomeri tapylmady');
     }
 
     if (user.isBanned) {
-      throw new UnauthorizedException('Hesabınız banlanmış');
+      throw new UnauthorizedException('Your account has been banned.');
     }
 
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
-      throw new UnauthorizedException('Şifre yanlış');
+      throw new UnauthorizedException('Invalid password.');
     }
 
     const { password: _, ...result } = user;

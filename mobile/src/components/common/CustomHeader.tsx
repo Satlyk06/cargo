@@ -24,6 +24,28 @@ export default function CustomHeader({ showBack = false, onBack, onNotifications
   const initials = (user?.name || user?.phoneNumber || 'U')
     .split(' ').map((word: string) => word[0]).slice(0, 2).join('').toUpperCase()
 
+const translateNotification = (message: string): string => {
+  const code = message.match(/(?:Takip kody|Tracking code|Код отслеживания):\s*(CAR-\d{4}-\d+)/i)?.[1] || ''
+
+  // newShipment
+  if (/täze kargo iberildi|new shipment sent|отправлен новый груз/i.test(message))
+    return t('notifications.newShipment', { code })
+
+  // deliveredShipment
+  if (/kargoňyz eltildi|your shipment delivered|ваш груз доставлен/i.test(message))
+    return t('notifications.deliveredShipment', { code })
+
+  // shippedShipment
+  if (/kargoňyz ýola çykdy|your shipment shipped|ваш груз отправлен/i.test(message))
+    return t('notifications.shippedShipment', { code })
+
+  // loadedShipment
+  if (/kargoňyz ýüklendi|your shipment loaded|ваш груз загружен/i.test(message))
+    return t('notifications.loadedShipment', { code })
+
+  return message
+}
+
   useEffect(() => {
     if (notificationsOpen) {
       refreshNotifications()
@@ -83,17 +105,17 @@ export default function CustomHeader({ showBack = false, onBack, onNotifications
         <Pressable style={styles.dropdownOverlay} onPress={() => setNotificationsOpen(false)}>
           <Pressable style={styles.notificationDropdown} onPress={() => undefined}>
             <View style={styles.dropdownTitleRow}>
-              <Text style={styles.dropdownTitle}>Bildirimler</Text>
+              <Text style={styles.dropdownTitle}>{t('notifications.title')}</Text>
               <Ionicons name="notifications-outline" size={17} color="#6366f1" />
             </View>
             {notificationsLoading ? <ActivityIndicator color="#6366f1" style={styles.loader} /> : notifications.slice(0, 4).length ? notifications.slice(0, 4).map(item => (
               <View key={item.id} style={styles.notificationItem}>
                 <View style={[styles.unreadDot, item.isRead && styles.readDot]} />
-                <Text style={[styles.notificationText, !item.isRead && styles.notificationTextUnread]} numberOfLines={2}>{item.message}</Text>
+                <Text style={[styles.notificationText, !item.isRead && styles.notificationTextUnread]} numberOfLines={2}>{translateNotification(item.message) }</Text>
               </View>
-            )) : <Text style={styles.emptyText}>Yeni bildirim yok</Text>}
+            )) : <Text style={styles.emptyText}>{t('notifications.noNotifications')}</Text>}
             <TouchableOpacity style={styles.allNotificationsButton} onPress={() => { setNotificationsOpen(false); onNotifications?.() }}>
-              <Text style={styles.allNotificationsText}>Tüm bildirimleri gör</Text>
+              <Text style={styles.allNotificationsText}>{t('notifications.viewAll')}</Text>
               <Ionicons name="arrow-forward" size={15} color="#6366f1" />
             </TouchableOpacity>
           </Pressable>
@@ -171,7 +193,16 @@ const styles = StyleSheet.create({
     borderColor: '#e0e7ff',
   },
   avatarText: { color: '#6366f1', fontSize: 13, fontWeight: '700' },
-  logoutButton: { width: 32, height: 40, alignItems: 'center', justifyContent: 'center' },
+ logoutButton: { 
+  width: 40, 
+  height: 40, 
+  alignItems: 'center', 
+  justifyContent: 'center',
+  borderWidth: 1,
+  borderColor: '#e2e8f0',
+  borderRadius: 10,
+  backgroundColor: '#ffff',
+},
   dropdownOverlay: { flex: 1, backgroundColor: 'transparent' },
   notificationDropdown: {
     position: 'absolute',

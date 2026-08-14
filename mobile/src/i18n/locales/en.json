@@ -64,7 +64,7 @@
 "phone":  "Phone Number",
 "password":  "Password",
 "phonePlaceholder":  "+993 65 123 456",
-"passwordPlaceholder":  "вЂўвЂўвЂўвЂўвЂўвЂўвЂўвЂў",
+"passwordPlaceholder":  "••••••••",
 "loginHelp":  "Sign in with the last 4 digits of your phone number",
 "loginError":  "Login failed",
 "loginSuccess":  "Login successful!",
@@ -87,7 +87,18 @@
 "aboutPhone": "+993 65 000 000",
 "aboutEmail": "info@cargo.com",
 "aboutAddress": "Ashgabat, Turkmenistan",
-"aboutVersion": "App Version"
+"aboutVersion": "App Version",
+"terms": "Terms of Use",
+"termsTitle": "Terms of Use",
+"termsLastUpdated": "Last updated: September 2026",
+"termsSection1Title": "Account Usage",
+"termsSection1Body": "You agree to use the application only for authorized purposes and to keep your account information secure.",
+"termsSection2Title": "Privacy",
+"termsSection2Body": "Your personal data is processed solely for the purpose of providing services and is not shared with third parties.",
+"termsSection3Title": "Responsibility",
+"termsSection3Body": "You are fully responsible for all actions performed through the application.",
+"termsSection4Title": "Changes",
+"termsSection4Body": "Terms may be updated from time to time. You can track the latest version within the application."
 },
     "notifications":  {
  "title":  "Notifications",
@@ -114,7 +125,7 @@
  "unread":  "Unread",
  "unreadPlural":  "Unread",
  "total":  "total",
- "viewAll":  "View all notifications в†’"
+ "viewAll":  "View all notifications"
  },
     "admin":  {
 "title":  "Admin Panel",

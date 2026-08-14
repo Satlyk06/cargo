@@ -7,9 +7,9 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
-  Alert,
   StyleSheet,
   ScrollView,
+  Keyboard,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useTranslation } from 'react-i18next'
@@ -20,15 +20,18 @@ import LanguageSwitcher from '../../components/common/LanguageSwitcher'
 
 export default function LoginScreen() {
   const { t } = useTranslation()
-  const [phoneNumber, setPhoneNumber] = useState('')
+  const [phoneNumber, setPhoneNumber] = useState('+993')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
   const { login } = useAuth()
 
   const handleLogin = async () => {
-    if (!phoneNumber || !password) {
-      Alert.alert(t('common.error') || 'Hata', t('auth.fillAllFields'))
+    Keyboard.dismiss()
+    setError('')
+    if (!phoneNumber || phoneNumber === '+993' || !password) {
+      setError(t('auth.fillAllFields'))
       return
     }
 
@@ -42,10 +45,7 @@ export default function LoginScreen() {
       const { access_token, user } = response.data
       await login(access_token, user)
     } catch (error: any) {
-      Alert.alert(
-        t('auth.loginError'),
-        error.response?.data?.message || t('auth.loginError')
-      )
+      setError(t('auth.loginError'))
     } finally {
       setLoading(false)
     }
@@ -67,70 +67,87 @@ export default function LoginScreen() {
         <ScrollView
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
         >
-          {/* Form */}
           <View style={styles.formContainer}>
-           
             <Text style={styles.title}>{t('common.welcome')}</Text>
             <Text style={styles.subtitle}></Text>
             <View style={styles.inputCard}>
-            {/* Telefon */}
-            <View style={styles.field}>
-              <Text style={styles.label}>{t('auth.phone')}</Text>
-              <View style={styles.inputWrap}>
-                <Ionicons name="call-outline" size={18} color="#cbd5e1" style={styles.inputIcon} />
-                <TextInput
-                  style={styles.input}
-                  placeholder={t('auth.phonePlaceholder')}
-                  placeholderTextColor="#94a3b8"
-                  value={phoneNumber}
-                  onChangeText={setPhoneNumber}
-                  keyboardType="phone-pad"
-                />
-              </View>
-            </View>
 
-            {/* Şifre */}
-            <View style={styles.field}>
-              <Text style={styles.label}>{t('auth.password')}</Text>
-              <View style={styles.inputWrap}>
-                <Ionicons name="lock-closed-outline" size={18} color="#cbd5e1" style={styles.inputIcon} />
-                <TextInput
-                  style={styles.input}
-                  placeholder={t('auth.passwordPlaceholder')}
-                  placeholderTextColor="#94a3b8"
-                  value={password}
-                  onChangeText={setPassword}
-                  secureTextEntry={!showPassword}
-                />
-                <TouchableOpacity
-                  style={styles.eyeButton}
-                  onPress={() => setShowPassword(p => !p)}
-                >
-                  <Ionicons
-                    name={showPassword ? 'eye-off-outline' : 'eye-outline'}
-                    size={18}
-                    color="#cbd5e1"
+              {/* Hata mesajı */}
+              {error ? (
+                <View style={styles.errorBox}>
+                  <Ionicons name="alert-circle-outline" size={16} color="#ef4444" />
+                  <Text style={styles.errorText}>{error}</Text>
+                </View>
+              ) : null}
+
+              {/* Telefon */}
+              <View style={styles.field}>
+                <Text style={styles.label}>{t('auth.phone')}</Text>
+                <View style={styles.inputWrap}>
+                  <Ionicons name="call-outline" size={18} color="#cbd5e1" style={styles.inputIcon} />
+                  <TextInput
+                    style={styles.input}
+                    placeholderTextColor="#94a3b8"
+                    value={phoneNumber}
+                    onChangeText={(text) => {
+                      setError('')
+                      if (!text.startsWith('+993')) {
+                        setPhoneNumber('+993')
+                      } else {
+                        setPhoneNumber(text)
+                      }
+                    }}
+                    keyboardType="phone-pad"
                   />
-                </TouchableOpacity>
+                </View>
               </View>
-            </View>
 
-            {/* Giriş Butonu */}
-            <TouchableOpacity
-              style={[styles.loginButton, loading && styles.loginButtonDisabled]}
-              onPress={handleLogin}
-              disabled={loading}
-            >
-              {loading ? (
-                <ActivityIndicator color="white" />
-              ) : (
-                <Text style={styles.loginButtonText}>{t('auth.login')}</Text>
-              )}
-            </TouchableOpacity>
+              {/* Şifre */}
+              <View style={styles.field}>
+                <Text style={styles.label}>{t('auth.password')}</Text>
+                <View style={styles.inputWrap}>
+                  <Ionicons name="lock-closed-outline" size={18} color="#cbd5e1" style={styles.inputIcon} />
+                  <TextInput
+                    style={styles.input}
+                    placeholder={t('auth.passwordPlaceholder')}
+                    placeholderTextColor="#94a3b8"
+                    value={password}
+                    onChangeText={(text) => {
+                      setError('')
+                      setPassword(text)
+                    }}
+                    secureTextEntry={!showPassword}
+                  />
+                  <TouchableOpacity
+                    style={styles.eyeButton}
+                    onPress={() => setShowPassword(p => !p)}
+                  >
+                    <Ionicons
+                      name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+                      size={18}
+                      color="#cbd5e1"
+                    />
+                  </TouchableOpacity>
+                </View>
+              </View>
 
-           {/* Yardım Metni */}
-            <Text style={styles.helpText}>{t('auth.loginHelp')}</Text>
+              {/* Giriş Butonu */}
+              <TouchableOpacity
+                style={[styles.loginButton, loading && styles.loginButtonDisabled]}
+                onPress={handleLogin}
+                disabled={loading}
+              >
+                {loading ? (
+                  <ActivityIndicator color="white" />
+                ) : (
+                  <Text style={styles.loginButtonText}>{t('auth.login')}</Text>
+                )}
+              </TouchableOpacity>
+
+              {/* Yardım Metni */}
+              <Text style={styles.helpText}>{t('auth.loginHelp')}</Text>
             </View>
           </View>
         </ScrollView>
@@ -168,13 +185,6 @@ const styles = StyleSheet.create({
   brandIcon: { width: 32, height: 32, borderRadius: 8, backgroundColor: '#2563eb', alignItems: 'center', justifyContent: 'center' },
   brandText: { fontSize: 14, fontWeight: '700', color: '#0f172a' },
   languageControl: { height: 34, minWidth: 86, borderWidth: 1, borderColor: '#e2e8f0', borderRadius: 9, alignItems: 'center', justifyContent: 'center' },
-  eyebrow: {
-    color: '#6366f1',
-    fontSize: 11,
-    letterSpacing: 1.1,
-    fontWeight: '700',
-    marginBottom: 11,
-  },
   title: {
     fontSize: 24,
     fontWeight: '700',
@@ -199,6 +209,23 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.06,
     shadowRadius: 12,
     elevation: 2,
+  },
+  errorBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#fef2f2',
+    borderWidth: 1,
+    borderColor: '#fecaca',
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 16,
+  },
+  errorText: {
+    flex: 1,
+    fontSize: 13,
+    color: '#ef4444',
+    fontWeight: '500',
   },
   field: {
     marginBottom: 16,

@@ -121,9 +121,9 @@
     "unread": "Okalan däl",
     "unreadPlural": "Okalan däl",
     "total": "jemi",
-    "viewAll": "Ähli bildirişleri gör →"
+    "viewAll": "Ähli bildirişleri gör"
   },
-  "profile": {
+"profile": {
     "title": "Profil",
     "phone": "Telefon belgi",
     "name": "Adyňyz",
@@ -141,7 +141,28 @@
       "super_admin": "Baş Admin",
       "admin": "Admin",
       "user": "Ulanyjy"
-    }
+    },
+    "about": "Hakynda",
+    "aboutTitle": "Programma hakynda",
+    "aboutDescription": "Cargo Logistics - ýük daşamak we logistika dolandyryşy üçin amatly platforma. Bu programma arkaly ýükleriňizi aňsatlyk bilen dolandyryp we yzarlap bilersiňiz.",
+    "aboutMission": "Logistika amallaryny ýönekeýleşdirmek we ulanyjylara ýüklerini yzarlamak üçin iň oňat tejribäni hödürlemek.",
+    "aboutContact": "Habarlaşmak",
+    "aboutPhone": "+993 12 345678",
+    "aboutEmail": "info@cargologistics.tm",
+    "aboutAddress": "Aşgabat, Türkmenistan",
+    "aboutVersion": "Wersiýa",
+    "terms": "Ulanyş şertleri",
+    "termsTitle": "Ulanyş şertleri",
+    "termsLastUpdated": "Soňky täzelenme: 2026",
+    "termsSection1Title": "1. Ulanyjy hasaby",
+    "termsSection1Body": "Ulgama girizilen telefon belgi we şifr bilen ulanyjy hasaby döredilýär. Ulanyjylar öz hasaplaryna girip, ýüklerini dolandyryp bilerler.",
+    "termsSection2Title": "2. Maglumatlar bilen işlemek",
+    "termsSection2Body": "Ulanyjylar tarapyndan berlen maglumatlar diňe ulgamyň içinde ulanylýar we üçünji taraplara berilmeýär.",
+    "termsSection3Title": "3. Yzarlama we howpsuzlyk",
+    "termsSection3Body": "Ulanyjylar öz ýüklerini yzarlap, oturymly habarnamalary alyp bilerler. Şifrler howpsuzlyk üçin şifrlenýär.",
+    "termsSection4Title": "4. Jemgyýetçilik kanunlary",
+    "termsSection4Body": "Ulanyjylar ulgamy ulanyp, ýerli we halkara kanunlaryna laýyklykda hereket etmeli."
+
   },
   "admin": {
     "title": "Admin Paneli",
@@ -198,6 +219,7 @@
     "unban": "Gadagançylyk aýyr",
     "delete": "Ýok et",
     "save": "Ýatda sakla",
+    "saving": "Ýatda sakla",
     "cancel": "Ýatyryp goý",
     "edit": "Üýtget",
     "logout": "Çykmak",
@@ -226,7 +248,8 @@
     "clear": "Arassala",
     "undo": "Yza gaýtar",
     "error": "Ýalňyşlyk",
-    "deleteConfirm": "Bu ýazgyny ýok etmek isleýärsiňizmi?"
+    "deleteConfirm": "Bu ýazgyny ýok etmek isleýärsiňizmi?",
+    "editUser":"Ulanyjyny üýtget"
   },
   "routeMap": {
     "title": "Ugur ýagdaýy",

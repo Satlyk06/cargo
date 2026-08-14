@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react'
+import React, { useState, useCallback, useRef } from 'react'
 import { useFocusEffect } from '@react-navigation/native'
 import {
   View,
@@ -25,6 +25,7 @@ export default function NotificationsScreen() {
   const [refreshing, setRefreshing] = useState(false)
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [confirmState, setConfirmState] = useState<{ type: 'deleteOne' | 'deleteSelected' | 'deleteAll'; id?: string } | null>(null)
+  const lastFetched = useRef<number>(0)
 
   const fetchNotifications = useCallback(async () => {
     try {
@@ -38,16 +39,20 @@ export default function NotificationsScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      void fetchNotifications()
+      const now = Date.now()
+      if (now - lastFetched.current > 30_000) {
+        lastFetched.current = now
+        void fetchNotifications()
+      }
     }, [fetchNotifications]),
   )
 
   const onRefresh = () => {
     setRefreshing(true)
+    lastFetched.current = Date.now()
     fetchNotifications()
   }
 
-  // ✅ Bildirim mesajını çevir
   const translateNotification = (message: string): string => {
     const normalizedMessage = message.toLowerCase()
     const codeMatch = message.match(/(CAR-\d{4}-\d{4})/)
@@ -105,12 +110,8 @@ export default function NotificationsScreen() {
 
   const markAsRead = async (id: string) => {
     try {
-      const response = await api.put(`/notifications/${id}/read`, {
-        userId: user?.id,
-      })
-      if (response.status === 200) {
-        await refreshNotifications()
-      }
+      const response = await api.put(`/notifications/${id}/read`, { userId: user?.id })
+      if (response.status === 200) await refreshNotifications()
     } catch (error) {
       console.error('Bildirim okunurken hata:', error)
     }
@@ -119,9 +120,7 @@ export default function NotificationsScreen() {
   const markAllAsRead = async () => {
     try {
       const response = await api.put(`/notifications/user/${user?.id}/read-all`)
-      if (response.status === 200) {
-        await refreshNotifications()
-      }
+      if (response.status === 200) await refreshNotifications()
     } catch (error) {
       console.error('Bildirimler okunurken hata:', error)
     }
@@ -150,15 +149,12 @@ export default function NotificationsScreen() {
 
   const handleConfirmAction = async () => {
     if (!confirmState) return
-
     try {
       if (confirmState.type === 'deleteOne' && confirmState.id) {
         const response = await api.delete(`/notifications/${confirmState.id}`, {
           data: { userId: user?.id },
         })
-        if (response.status === 200) {
-          await refreshNotifications()
-        }
+        if (response.status === 200) await refreshNotifications()
       } else if (confirmState.type === 'deleteSelected') {
         const ids = selectedIds
         if (!ids.length) return
@@ -167,9 +163,7 @@ export default function NotificationsScreen() {
         await refreshNotifications()
       } else if (confirmState.type === 'deleteAll') {
         const response = await api.delete(`/notifications/user/${user?.id}/all`)
-        if (response.status === 200) {
-          await refreshNotifications()
-        }
+        if (response.status === 200) await refreshNotifications()
       }
     } catch (error) {
       console.error('Bildirimler silinirken hata:', error)
@@ -183,7 +177,6 @@ export default function NotificationsScreen() {
   return (
     <MainLayout title={t('common.notifications')}>
       <View style={styles.container}>
-        {/* Header */}
         <View style={styles.header}>
           <View style={styles.headerLeft}>
             <Text style={styles.title}>{t('notifications.title')}</Text>
@@ -216,7 +209,6 @@ export default function NotificationsScreen() {
           </View>
         </View>
 
-        {/* List */}
         {loading ? (
           <View style={styles.center}>
             <ActivityIndicator size="large" color="#6366f1" />
@@ -241,9 +233,11 @@ export default function NotificationsScreen() {
               <View
                 key={notification.id}
                 style={[styles.notificationCard, !notification.isRead && styles.notificationCardUnread]}
-                onTouchEnd={() => undefined}
               >
-                <TouchableOpacity style={[styles.selectBox, selectedIds.includes(notification.id) && styles.selectBoxActive]} onPress={() => toggleSelection(notification.id)}>
+                <TouchableOpacity
+                  style={[styles.selectBox, selectedIds.includes(notification.id) && styles.selectBoxActive]}
+                  onPress={() => toggleSelection(notification.id)}
+                >
                   {selectedIds.includes(notification.id) && <Ionicons name="checkmark" size={12} color="#fff" />}
                 </TouchableOpacity>
                 <View style={styles.notificationDot}>
@@ -274,17 +268,11 @@ export default function NotificationsScreen() {
                     <Ionicons name="copy-outline" size={17} color="#6366f1" />
                   </TouchableOpacity>
                   {!notification.isRead && (
-                    <TouchableOpacity
-                      style={styles.actionIconButton}
-                      onPress={() => markAsRead(notification.id)}
-                    >
+                    <TouchableOpacity style={styles.actionIconButton} onPress={() => markAsRead(notification.id)}>
                       <Ionicons name="checkmark" size={18} color="#6366f1" />
                     </TouchableOpacity>
                   )}
-                  <TouchableOpacity
-                    style={styles.actionIconButton}
-                    onPress={() => deleteNotification(notification.id)}
-                  >
+                  <TouchableOpacity style={styles.actionIconButton} onPress={() => deleteNotification(notification.id)}>
                     <Ionicons name="trash-outline" size={18} color="#f87171" />
                   </TouchableOpacity>
                 </View>
@@ -293,6 +281,7 @@ export default function NotificationsScreen() {
           </ScrollView>
         )}
       </View>
+
       <ConfirmModal
         visible={Boolean(confirmState)}
         title={confirmState?.type === 'deleteSelected'
@@ -395,8 +384,20 @@ const styles = StyleSheet.create({
   notificationDot: {
     paddingTop: 4,
   },
-  selectBox: { width: 20, height: 20, borderRadius: 6, borderWidth: 1, borderColor: '#cbd5e1', alignItems: 'center', justifyContent: 'center', marginTop: 1 },
-  selectBoxActive: { backgroundColor: '#6366f1', borderColor: '#6366f1' },
+  selectBox: {
+    width: 20,
+    height: 20,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#cbd5e1',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 1,
+  },
+  selectBoxActive: {
+    backgroundColor: '#6366f1',
+    borderColor: '#6366f1',
+  },
   dot: {
     width: 8,
     height: 8,

@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react'
+import React, { useState, useCallback, useRef } from 'react'
 import {
   View,
   Text,
@@ -35,6 +35,7 @@ export default function DashboardScreen() {
   const [shipments, setShipments] = useState<Shipment[]>([])
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
+  const lastFetched = useRef<number>(0)
 
   const fetchShipments = useCallback(async () => {
     try {
@@ -51,12 +52,17 @@ export default function DashboardScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      void fetchShipments()
+      const now = Date.now()
+      if (now - lastFetched.current > 30_000) {
+        lastFetched.current = now
+        void fetchShipments()
+      }
     }, [fetchShipments]),
   )
 
   const onRefresh = () => {
     setRefreshing(true)
+    lastFetched.current = Date.now()
     fetchShipments()
   }
 

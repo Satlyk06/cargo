@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react'
+import React, { useState, useCallback, useRef } from 'react'
 import {
   View,
   Text,
@@ -42,6 +42,7 @@ export default function ShipmentsScreen() {
   const [refreshing, setRefreshing] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [activeFilter, setActiveFilter] = useState('all')
+  const lastFetched = useRef<number>(0)
 
   const fetchShipments = useCallback(async () => {
     try {
@@ -55,12 +56,17 @@ export default function ShipmentsScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      void fetchShipments()
+      const now = Date.now()
+      if (now - lastFetched.current > 30_000) {
+        lastFetched.current = now
+        void fetchShipments()
+      }
     }, [fetchShipments]),
   )
 
   const onRefresh = () => {
     setRefreshing(true)
+    lastFetched.current = Date.now()
     fetchShipments()
   }
 
@@ -81,27 +87,19 @@ export default function ShipmentsScreen() {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'loaded':
-        return '#f59e0b'
-      case 'shipped':
-        return '#6366f1'
-      case 'delivered':
-        return '#10b981'
-      default:
-        return '#94a3b8'
+      case 'loaded': return '#f59e0b'
+      case 'shipped': return '#6366f1'
+      case 'delivered': return '#10b981'
+      default: return '#94a3b8'
     }
   }
 
   const getStatusText = (status: string) => {
     switch (status) {
-      case 'loaded':
-        return t('common.loaded')
-      case 'shipped':
-        return t('common.shipped')
-      case 'delivered':
-        return t('common.delivered')
-      default:
-        return status
+      case 'loaded': return t('common.loaded')
+      case 'shipped': return t('common.shipped')
+      case 'delivered': return t('common.delivered')
+      default: return status
     }
   }
 
@@ -152,10 +150,7 @@ export default function ShipmentsScreen() {
             <View
               style={[
                 styles.progressFill,
-                {
-                  width: `${pct}%`,
-                  backgroundColor: pct === 100 ? '#10b981' : '#6366f1',
-                },
+                { width: `${pct}%`, backgroundColor: pct === 100 ? '#10b981' : '#6366f1' },
               ]}
             />
           </View>
@@ -177,7 +172,6 @@ export default function ShipmentsScreen() {
   return (
     <MainLayout title={t('common.shipments')}>
       <View style={styles.container}>
-        {/* Arama */}
         <View style={styles.searchWrap}>
           <Ionicons name="search" size={16} color="#94a3b8" style={styles.searchIcon} />
           <TextInput
@@ -189,7 +183,6 @@ export default function ShipmentsScreen() {
           />
         </View>
 
-        {/* Filtreler */}
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -209,7 +202,6 @@ export default function ShipmentsScreen() {
           ))}
         </ScrollView>
 
-        {/* Liste */}
         {loading ? (
           <View style={styles.center}>
             <ActivityIndicator size="large" color="#6366f1" />
@@ -274,7 +266,7 @@ const styles = StyleSheet.create({
     paddingLeft: 13,
     gap: 20,
     alignItems: 'center',
-     },
+  },
   filterButton: {
     height: 40,
     alignItems: 'center',
@@ -325,7 +317,12 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#0f172a',
   },
-  trackingCodeButton: { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start' },
+  trackingCodeButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    alignSelf: 'flex-start',
+  },
   statusBadge: {
     paddingHorizontal: 10,
     paddingVertical: 2,

@@ -87,7 +87,18 @@
     "aboutPhone": "+993 65 000 000",
     "aboutEmail": "info@cargo.com",
     "aboutAddress": "Aşgabat, Türkmenistan",
-    "aboutVersion": "Programma wersiýasy"
+    "aboutVersion": "Programma wersiýasy",
+    "terms": "Ulanyş düzgünleri",
+"termsTitle": "Ulanyş şertleri",
+"termsLastUpdated": "Soňky täzeleniş: Sentýabr 2026",
+"termsSection1Title": "Hasaby ulanmak",
+"termsSection1Body": "Programmany diňe rugsat edilen maksatlar üçin ulanmagy we hasap maglumatyňyzy goramagy kabul edýärsiňiz.",
+"termsSection2Title": "Gizlinlik",
+"termsSection2Body": "Şahsy maglumatlaryňyz diňe hyzmat bermek maksady bilen işlenýär we üçünji taraplar bilen paýlaşylmaýar.",
+"termsSection3Title": "Jogapkärçilik",
+"termsSection3Body": "Programma arkaly amala aşyrýan hereketleriňiz üçin doly jogapkärçiligi öz üstüňize alýarsyňyz.",
+"termsSection4Title": "Üýtgeşmeler",
+"termsSection4Body": "Şertler wagtal-wagtal täzelenlip bilner. Iň soňky görnüşi programmanyň içinden yzarlap bilersiňiz."
   },
   "notifications": {
     "title": "Bildirişler",
@@ -114,7 +125,7 @@
     "unread": "Okalmadyk",
     "unreadPlural": "Okalmadyk",
     "total": "jemi",
-    "viewAll": "Ähli bildirişleri gör →"
+    "viewAll": "Ähli bildirişleri gör"
   },
   "admin": {
     "title": "Admin paneli",

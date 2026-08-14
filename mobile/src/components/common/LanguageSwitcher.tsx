@@ -48,7 +48,15 @@ export default function LanguageSwitcher({ withLabel = false }: LanguageSwitcher
         animationType="fade"
         statusBarTranslucent
       >
-        <Pressable style={styles.overlay} onPress={() => setModalVisible(false)}>
+        <Pressable
+          style={[
+            styles.overlay,
+           withLabel
+  ? { alignItems: 'flex-end', paddingLeft: 0, paddingRight: 9 }
+  : { alignItems: 'flex-end', paddingLeft: 0, paddingRight: 108 }
+          ]}
+          onPress={() => setModalVisible(false)}  
+        >
           <View style={styles.modalContent}>
             {languages.map((lang) => {
               const isActive = i18n.language === lang.code
@@ -86,9 +94,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: 'transparent',
     justifyContent: 'flex-start',
-    alignItems: 'flex-end',
-    paddingTop: 90,
-    paddingRight: 108,
+    paddingTop: 100,
   },
   modalContent: {
     backgroundColor: '#fff',

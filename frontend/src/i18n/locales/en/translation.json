@@ -132,9 +132,9 @@
     "unread": "Unread",
     "unreadPlural": "Unread",
     "total": "total",
-    "viewAll": "View all notifications →"
+    "viewAll": "View all notifications"
   },
-  "profile": {
+"profile": {
     "title": "Profile",
     "phone": "Phone Number",
     "name": "Your Name",
@@ -152,8 +152,28 @@
       "super_admin": "Super Admin",
       "admin": "Admin",
       "user": "User"
-    }
-  },
+    },
+    "about": "About",
+    "aboutTitle": "About App",
+    "aboutDescription": "Cargo Logistics - a convenient platform for cargo transportation and logistics management. With this app, you can easily manage and track your shipments.",
+    "aboutMission": "To simplify logistics operations and provide users with the best experience in tracking their shipments.",
+    "aboutContact": "Contact",
+    "aboutPhone": "+993 12 345678",
+    "aboutEmail": "info@cargologistics.tm",
+    "aboutAddress": "Ashgabat, Turkmenistan",
+    "aboutVersion": "Version",
+    "terms": "Terms of Service",
+    "termsTitle": "Terms of Service",
+    "termsLastUpdated": "Last updated: 2026",
+    "termsSection1Title": "1. User Account",
+    "termsSection1Body": "A user account is created using the phone number and password entered into the system. Users can log in and manage their shipments.",
+    "termsSection2Title": "2. Data Processing",
+    "termsSection2Body": "Data provided by users is used only within the system and is not shared with third parties.",
+    "termsSection3Title": "3. Tracking and Security",
+    "termsSection3Body": "Users can track their shipments and receive timely notifications. Passwords are encrypted for security.",
+    "termsSection4Title": "4. Community Rules",
+    "termsSection4Body": "Users must act in accordance with local and international laws when using the system."
+},
   "admin": {
     "title": "Admin Panel",
     "dashboard": "Dashboard",
@@ -216,6 +236,7 @@
     "unban": "Unban",
     "delete": "Delete",
     "save": "Save",
+    "saving": "Save",
     "cancel": "Cancel",
     "edit": "Edit",
     "logout": "Logout",
@@ -234,7 +255,8 @@
     "search": "Search",
   "status": "Status",
   "date": "Date",
-    "noData": "No data"
+    "noData": "No data",
+    "editUser":"Edit User"
   },
   "routeMap": {
     "title": "Route Status",

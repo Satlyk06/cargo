@@ -46,8 +46,15 @@ export const ShipmentProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   }, [user?.id])
 
   useEffect(() => {
+  void refreshShipments()
+
+  // Her 30 saniyede otomatik yenile
+  const interval = setInterval(() => {
     void refreshShipments()
-  }, [refreshShipments])
+  }, 30000)
+
+  return () => clearInterval(interval)
+}, [refreshShipments])
 
   const value = useMemo(() => ({ shipments, loading, refreshShipments }), [shipments, loading, refreshShipments])
 

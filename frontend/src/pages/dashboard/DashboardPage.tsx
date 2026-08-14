@@ -129,7 +129,7 @@ export default function DashboardPage() {
           <span style={{ fontSize: 12, color: '#94a3b8' }}>{shipments.length} {t('dashboard.records')}</span>
         </div>
         {loading ? (
-          <div style={s.emptyState}>Yükleniyor...</div>
+          <div style={s.emptyState}>{t('common.loading')}</div>
         ) : shipments.length === 0 ? (
           <div style={s.emptyState}>{t('dashboard.noShipments')}</div>
         ) : (

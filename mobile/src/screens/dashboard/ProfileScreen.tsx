@@ -1,28 +1,136 @@
-import React, { useState } from 'react'
+import React, { useState, useRef, useEffect, useCallback } from 'react'
 import {
   View, Text, TouchableOpacity, ScrollView,
-  StyleSheet, Modal, Linking, Pressable
+  StyleSheet, Modal, Linking, Pressable, Animated,
+  RefreshControl,
 } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '../../context/AuthContext'
 import { Ionicons } from '@expo/vector-icons'
 import MainLayout from '../../components/layout/MainLayout'
 import ConfirmModal from '../../components/common/ConfirmModal'
+import api from '../../services/api'
 
 const APP_VERSION = '1.0.0'
 
+function AnimatedModal({
+  visible,
+  onClose,
+  children,
+}: {
+  visible: boolean
+  onClose: () => void
+  children: React.ReactNode
+}) {
+  const slideAnim = useRef(new Animated.Value(600)).current
+  const fadeAnim = useRef(new Animated.Value(0)).current
+  const [rendered, setRendered] = useState(false)
+
+  React.useEffect(() => {
+    if (visible) {
+      setRendered(true)
+      Animated.parallel([
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 250,
+          useNativeDriver: true,
+        }),
+        Animated.spring(slideAnim, {
+          toValue: 0,
+          damping: 20,
+          stiffness: 200,
+          useNativeDriver: true,
+        }),
+      ]).start()
+    } else {
+      Animated.parallel([
+        Animated.timing(fadeAnim, {
+          toValue: 0,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+        Animated.timing(slideAnim, {
+          toValue: 600,
+          duration: 220,
+          useNativeDriver: true,
+        }),
+      ]).start(() => setRendered(false))
+    }
+  }, [visible])
+
+  if (!rendered) return null
+
+  return (
+    <Modal
+      visible={rendered}
+      animationType="none"
+      transparent
+      statusBarTranslucent
+      onRequestClose={onClose}
+    >
+      <Animated.View style={[styles.modalOverlay, { opacity: fadeAnim }]}>
+        <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
+        <Animated.View
+          style={[styles.modalSheet, { transform: [{ translateY: slideAnim }] }]}
+        >
+          <Pressable onPress={(e) => e.stopPropagation()}>
+            {children}
+          </Pressable>
+        </Animated.View>
+      </Animated.View>
+    </Modal>
+  )
+}
+
 export default function ProfileScreen() {
   const { t } = useTranslation()
-  const { user, logout } = useAuth()
+  const { user, token, login } = useAuth()
   const [confirmVisible, setConfirmVisible] = useState(false)
   const [aboutVisible, setAboutVisible] = useState(false)
+  const [termsVisible, setTermsVisible] = useState(false)
+  
+  // ✅ Yeni state'ler
+  const [refreshing, setRefreshing] = useState(false)
+  const [userData, setUserData] = useState(user)
+
+  // ✅ Profil verilerini backend'den çek
+  const fetchUserProfile = useCallback(async () => {
+    if (!user?.id) return
+    
+    try {
+      const response = await api.get(`/users/${user.id}`)
+      if (response.data) {
+        setUserData(response.data)
+        // ✅ AuthContext'i de güncelle (token ile birlikte)
+        if (token) {
+          login(token, response.data)
+        }
+      }
+    } catch (error) {
+      console.error('Profil yüklenirken hata:', error)
+    }
+  }, [user?.id, token])
+
+  // ✅ İlk yüklemede ve user değiştiğinde verileri çek
+  useEffect(() => {
+    if (user?.id) {
+      fetchUserProfile()
+    }
+  }, [user?.id])
+
+  // ✅ Pull-to-refresh handler
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true)
+    await fetchUserProfile()
+    setRefreshing(false)
+  }, [fetchUserProfile])
 
   const handleLogout = async () => {
     setConfirmVisible(false)
     await logout()
   }
 
-  const initials = (user?.name || user?.phoneNumber || 'U')
+  const initials = (userData?.name || userData?.phoneNumber || 'U')
     .split(' ')
     .map((w: string) => w[0])
     .slice(0, 2)
@@ -36,37 +144,43 @@ export default function ProfileScreen() {
   })
 
   const roleConfig = getRoleConfig()
-  const role = roleConfig[user?.role as keyof typeof roleConfig] || roleConfig.user
+  const role = roleConfig[userData?.role as keyof typeof roleConfig] || roleConfig.user
 
   return (
     <MainLayout title={t('common.profile')}>
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={['#6366f1']}
+            tintColor="#6366f1"
+          />
+        }
       >
         {/* Profile Card */}
         <View style={styles.card}>
-          {/* Avatar */}
           <View style={styles.avatarWrap}>
             <View style={styles.avatarRing}>
               <View style={styles.avatar}>
                 <Text style={styles.avatarText}>{initials}</Text>
               </View>
             </View>
-            <Text style={styles.avatarName}>{user?.name || t('profile.noName')}</Text>
-            <Text style={styles.avatarSub}>{user?.phoneNumber}</Text>
+            <Text style={styles.avatarName}>{userData?.name || t('profile.noName')}</Text>
+            <Text style={styles.avatarSub}>{userData?.phoneNumber}</Text>
             <View style={[styles.roleBadge, { backgroundColor: role.bg }]}>
               <Text style={[styles.roleBadgeText, { color: role.color }]}>{role.label}</Text>
             </View>
           </View>
 
-          {/* Details */}
           <View style={styles.body}>
             <View style={styles.field}>
               <Text style={styles.label}>{t('profile.phone')}</Text>
               <View style={styles.staticVal}>
                 <Ionicons name="call-outline" size={16} color="#94a3b8" style={{ marginRight: 8 }} />
-                <Text style={styles.staticText}>{user?.phoneNumber}</Text>
+                <Text style={styles.staticText}>{userData?.phoneNumber}</Text>
               </View>
             </View>
 
@@ -74,7 +188,7 @@ export default function ProfileScreen() {
               <Text style={styles.label}>{t('profile.name')}</Text>
               <View style={styles.staticVal}>
                 <Ionicons name="person-outline" size={16} color="#94a3b8" style={{ marginRight: 8 }} />
-                <Text style={styles.staticText}>{user?.name || t('profile.noName')}</Text>
+                <Text style={styles.staticText}>{userData?.name || t('profile.noName')}</Text>
               </View>
             </View>
 
@@ -92,14 +206,28 @@ export default function ProfileScreen() {
 
         {/* About Button */}
         <TouchableOpacity
-          style={styles.aboutButton}
+          style={styles.menuButton}
           onPress={() => setAboutVisible(true)}
         >
-          <View style={styles.aboutButtonLeft}>
-            <View style={styles.aboutIconWrap}>
+          <View style={styles.menuButtonLeft}>
+            <View style={[styles.menuIconWrap, { backgroundColor: '#eef2ff' }]}>
               <Ionicons name="information-circle-outline" size={20} color="#6366f1" />
             </View>
-            <Text style={styles.aboutButtonText}>{t('profile.about')}</Text>
+            <Text style={styles.menuButtonText}>{t('profile.about')}</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color="#94a3b8" />
+        </TouchableOpacity>
+
+        {/* Terms Button */}
+        <TouchableOpacity
+          style={[styles.menuButton, { marginTop: 8 }]}
+          onPress={() => setTermsVisible(true)}
+        >
+          <View style={styles.menuButtonLeft}>
+            <View style={[styles.menuIconWrap, { backgroundColor: '#f0fdf4' }]}>
+              <Ionicons name="document-text-outline" size={20} color="#16a34a" />
+            </View>
+            <Text style={styles.menuButtonText}>{t('profile.terms')}</Text>
           </View>
           <Ionicons name="chevron-forward" size={18} color="#94a3b8" />
         </TouchableOpacity>
@@ -114,83 +242,107 @@ export default function ProfileScreen() {
         </TouchableOpacity>
 
         {/* About Modal */}
-        <Modal
-          visible={aboutVisible}
-          animationType="slide"
-          transparent
-          statusBarTranslucent
-          onRequestClose={() => setAboutVisible(false)}
-        >
-          <Pressable style={styles.modalOverlay} onPress={() => setAboutVisible(false)}>
-            <Pressable style={styles.modalSheet} onPress={(event) => event.stopPropagation()}>
-              <View style={styles.sheetHandle} />
-              {/* Modal Header */}
-              <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>{t('profile.aboutTitle')}</Text>
-                <TouchableOpacity onPress={() => setAboutVisible(false)} style={styles.modalClose}>
-                  <Ionicons name="close" size={22} color="#64748b" />
-                </TouchableOpacity>
+        <AnimatedModal visible={aboutVisible} onClose={() => setAboutVisible(false)}>
+          <View style={styles.sheetHandle} />
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>{t('profile.aboutTitle')}</Text>
+            <TouchableOpacity onPress={() => setAboutVisible(false)} style={styles.modalClose}>
+              <Ionicons name="close" size={22} color="#64748b" />
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView showsVerticalScrollIndicator={false}>
+            <View style={styles.aboutLogoWrap}>
+              <View style={styles.aboutLogo}>
+                <Ionicons name="cube" size={36} color="#fff" />
               </View>
+              <Text style={styles.aboutAppName}>{t('common.appName')}</Text>
+              <Text style={styles.aboutVersion}>v{APP_VERSION}</Text>
+            </View>
 
-              <ScrollView showsVerticalScrollIndicator={false}>
-                {/* Logo area */}
-                <View style={styles.aboutLogoWrap}>
-                  <View style={styles.aboutLogo}>
-                    <Ionicons name="cube" size={36} color="#fff" />
+            <View style={styles.aboutSection}>
+              <Text style={styles.aboutDescription}>{t('profile.aboutDescription')}</Text>
+            </View>
+
+            <View style={styles.aboutMissionCard}>
+              <Ionicons name="flag-outline" size={18} color="#6366f1" />
+              <Text style={styles.aboutMissionText}>{t('profile.aboutMission')}</Text>
+            </View>
+
+            <View style={styles.aboutSection}>
+              <Text style={styles.aboutSectionTitle}>{t('profile.aboutContact')}</Text>
+
+              <TouchableOpacity
+                style={styles.contactRow}
+                onPress={() => Linking.openURL(`tel:${t('profile.aboutPhone')}`)}
+              >
+                <View style={styles.contactIconWrap}>
+                  <Ionicons name="call-outline" size={18} color="#6366f1" />
+                </View>
+                <Text style={styles.contactText}>{t('profile.aboutPhone')}</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.contactRow}
+                onPress={() => Linking.openURL(`mailto:${t('profile.aboutEmail')}`)}
+              >
+                <View style={styles.contactIconWrap}>
+                  <Ionicons name="mail-outline" size={18} color="#6366f1" />
+                </View>
+                <Text style={styles.contactText}>{t('profile.aboutEmail')}</Text>
+              </TouchableOpacity>
+
+              <View style={styles.contactRow}>
+                <View style={styles.contactIconWrap}>
+                  <Ionicons name="location-outline" size={18} color="#6366f1" />
+                </View>
+                <Text style={styles.contactText}>{t('profile.aboutAddress')}</Text>
+              </View>
+            </View>
+
+            <Text style={styles.versionFooter}>{t('profile.aboutVersion')} {APP_VERSION}</Text>
+          </ScrollView>
+        </AnimatedModal>
+
+        {/* Terms Modal */}
+        <AnimatedModal visible={termsVisible} onClose={() => setTermsVisible(false)}>
+          <View style={styles.sheetHandle} />
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>{t('profile.termsTitle')}</Text>
+            <TouchableOpacity onPress={() => setTermsVisible(false)} style={styles.modalClose}>
+              <Ionicons name="close" size={22} color="#64748b" />
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 32 }}>
+            <View style={styles.termsBanner}>
+              <View style={styles.termsIconWrap}>
+                <Ionicons name="shield-checkmark" size={32} color="#fff" />
+              </View>
+              <Text style={styles.termsBannerTitle}>{t('profile.termsTitle')}</Text>
+              <Text style={styles.termsBannerSub}>{t('profile.termsLastUpdated')}</Text>
+            </View>
+
+            {[
+              { icon: 'person-circle-outline', key: 'termsSection1' },
+              { icon: 'lock-closed-outline', key: 'termsSection2' },
+              { icon: 'eye-outline', key: 'termsSection3' },
+              { icon: 'alert-circle-outline', key: 'termsSection4' },
+            ].map((section, i) => (
+              <View key={i} style={styles.termsSectionCard}>
+                <View style={styles.termsSectionHeader}>
+                  <View style={styles.termsSectionIconWrap}>
+                    <Ionicons name={section.icon as any} size={18} color="#16a34a" />
                   </View>
-                  <Text style={styles.aboutAppName}>{t('common.appName')}</Text>
-                  <Text style={styles.aboutVersion}>v{APP_VERSION}</Text>
+                  <Text style={styles.termsSectionTitle}>{t(`profile.${section.key}Title`)}</Text>
                 </View>
+                <Text style={styles.termsSectionBody}>{t(`profile.${section.key}Body`)}</Text>
+              </View>
+            ))}
 
-                {/* Description */}
-                <View style={styles.aboutSection}>
-                  <Text style={styles.aboutDescription}>{t('profile.aboutDescription')}</Text>
-                </View>
-
-                {/* Mission */}
-                <View style={styles.aboutMissionCard}>
-                  <Ionicons name="flag-outline" size={18} color="#6366f1" />
-                  <Text style={styles.aboutMissionText}>{t('profile.aboutMission')}</Text>
-                </View>
-
-                {/* Contact */}
-                <View style={styles.aboutSection}>
-                  <Text style={styles.aboutSectionTitle}>{t('profile.aboutContact')}</Text>
-
-                  <TouchableOpacity
-                    style={styles.contactRow}
-                    onPress={() => Linking.openURL(`tel:${t('profile.aboutPhone')}`)}
-                  >
-                    <View style={styles.contactIconWrap}>
-                      <Ionicons name="call-outline" size={18} color="#6366f1" />
-                    </View>
-                    <Text style={styles.contactText}>{t('profile.aboutPhone')}</Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    style={styles.contactRow}
-                    onPress={() => Linking.openURL(`mailto:${t('profile.aboutEmail')}`)}
-                  >
-                    <View style={styles.contactIconWrap}>
-                      <Ionicons name="mail-outline" size={18} color="#6366f1" />
-                    </View>
-                    <Text style={styles.contactText}>{t('profile.aboutEmail')}</Text>
-                  </TouchableOpacity>
-
-                  <View style={styles.contactRow}>
-                    <View style={styles.contactIconWrap}>
-                      <Ionicons name="location-outline" size={18} color="#6366f1" />
-                    </View>
-                    <Text style={styles.contactText}>{t('profile.aboutAddress')}</Text>
-                  </View>
-                </View>
-
-                {/* Version */}
-                <Text style={styles.versionFooter}>{t('profile.aboutVersion')} {APP_VERSION}</Text>
-              </ScrollView>
-            </Pressable>
-          </Pressable>
-        </Modal>
+            <Text style={styles.versionFooter}>{t('profile.termsLastUpdated')}</Text>
+          </ScrollView>
+        </AnimatedModal>
 
         <ConfirmModal
           visible={confirmVisible}
@@ -225,9 +377,9 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 3,
   },
-  avatarWrap: {
+ avatarWrap: {
     backgroundColor: '#eef2ff',
-    paddingVertical: 32,
+    paddingVertical: 24,
     alignItems: 'center',
     borderBottomWidth: 1,
     borderBottomColor: '#e2e8f0',
@@ -237,34 +389,34 @@ const styles = StyleSheet.create({
     borderRadius: 50,
     borderWidth: 2,
     borderColor: '#6366f1',
-    marginBottom: 12,
+    marginBottom: 10,
   },
   avatar: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
+    width: 64,
+    height: 64,
+    borderRadius: 32,
     backgroundColor: '#6366f1',
     alignItems: 'center',
     justifyContent: 'center',
   },
   avatarText: {
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: '700',
     color: '#fff',
     letterSpacing: -1,
   },
   avatarName: {
-    fontSize: 17,
+    fontSize: 16,
     fontWeight: '700',
     color: '#0f172a',
   },
   avatarSub: {
     fontSize: 13,
     color: '#64748b',
-    marginTop: 3,
+    marginTop: 2,
   },
   roleBadge: {
-    marginTop: 8,
+    marginTop: 6,
     paddingHorizontal: 12,
     paddingVertical: 4,
     borderRadius: 20,
@@ -275,11 +427,11 @@ const styles = StyleSheet.create({
     letterSpacing: 0.3,
   },
   body: {
-    padding: 20,
-    gap: 16,
+    padding: 16,
+    gap: 12,
   },
   field: {
-    marginBottom: 4,
+    marginBottom: 2,
   },
   label: {
     fontSize: 11,
@@ -287,7 +439,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.8,
     textTransform: 'uppercase',
     color: '#94a3b8',
-    marginBottom: 6,
+    marginBottom: 5,
   },
   staticVal: {
     flexDirection: 'row',
@@ -297,21 +449,21 @@ const styles = StyleSheet.create({
     borderColor: '#e2e8f0',
     borderRadius: 10,
     paddingHorizontal: 14,
-    paddingVertical: 12,
+    paddingVertical: 11,
   },
   staticText: {
     fontSize: 14,
     fontWeight: '500',
     color: '#475569',
   },
-  aboutButton: {
-    marginTop: 16,
+  menuButton: {
+    marginTop: 10,
     backgroundColor: '#fff',
     borderRadius: 14,
     borderWidth: 1,
     borderColor: '#e2e8f0',
     paddingHorizontal: 16,
-    paddingVertical: 14,
+    paddingVertical: 13,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -321,29 +473,28 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 1,
   },
-  aboutButtonLeft: {
+  menuButtonLeft: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
   },
-  aboutIconWrap: {
+  menuIconWrap: {
     width: 36,
     height: 36,
     borderRadius: 10,
-    backgroundColor: '#eef2ff',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  aboutButtonText: {
+  menuButtonText: {
     fontSize: 15,
     fontWeight: '600',
     color: '#1e293b',
   },
   logoutButton: {
-    marginTop: 12,
+    marginTop: 10,
     backgroundColor: '#ef4444',
     borderRadius: 14,
-    paddingVertical: 15,
+    paddingVertical: 14,
     alignItems: 'center',
     flexDirection: 'row',
     justifyContent: 'center',
@@ -362,9 +513,8 @@ const styles = StyleSheet.create({
   // Modal
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.4)',
+    backgroundColor: 'rgba(0,0,0,0.45)',
     justifyContent: 'flex-end',
-    paddingTop: 48,
   },
   modalSheet: {
     backgroundColor: '#fff',
@@ -388,7 +538,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingTop: 20,
+    paddingTop: 16,
     paddingBottom: 12,
     borderBottomWidth: 1,
     borderBottomColor: '#f1f5f9',
@@ -406,6 +556,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  // About Modal
   aboutLogoWrap: {
     alignItems: 'center',
     paddingVertical: 28,
@@ -500,4 +651,75 @@ const styles = StyleSheet.create({
     marginTop: 24,
     marginBottom: 8,
   },
+  // Terms Modal
+  termsBanner: {
+    alignItems: 'center',
+    paddingVertical: 28,
+    paddingHorizontal: 20,
+    backgroundColor: '#f0fdf4',
+    borderBottomWidth: 1,
+    borderBottomColor: '#dcfce7',
+  },
+  termsIconWrap: {
+    width: 64,
+    height: 64,
+    borderRadius: 18,
+    backgroundColor: '#16a34a',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+    shadowColor: '#16a34a',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  termsBannerTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#14532d',
+    letterSpacing: -0.3,
+  },
+  termsBannerSub: {
+    fontSize: 12,
+    color: '#4ade80',
+    marginTop: 4,
+  },
+  termsSectionCard: {
+    marginHorizontal: 16,
+    marginTop: 12,
+    backgroundColor: '#fff',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    padding: 14,
+  },
+  termsSectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 6,
+  },
+  termsSectionIconWrap: {
+    width: 30,
+    height: 30,
+    borderRadius: 8,
+    backgroundColor: '#f0fdf4',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  termsSectionTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#0f172a',
+  },
+  termsSectionBody: {
+    fontSize: 12,
+    color: '#64748b',
+    lineHeight: 18,
+  },
 })
+
+function logout() {
+  throw new Error('Function not implemented.')
+}

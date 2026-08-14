@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '../../context/AuthContext'
-import QRCodeDisplay from '../../components/common/QRCodeDisplay'
 import RouteMap from '../../components/common/RouteMap'
 import { toast } from 'react-hot-toast'
 import { copyToClipboard } from '../../utils/clipboard'
@@ -12,7 +11,7 @@ interface Shipment {
   id: string; trackingCode: string; senderName: string; receiverName: string
   receiverPhone: string; weight: number; price: number; route: string[]
   routeStatus: boolean[]; currentRouteIndex: number; status: string
-  qrCode: string; createdAt: string
+  createdAt: string
 }
 
 const s: Record<string, React.CSSProperties> = {
@@ -123,7 +122,7 @@ export default function ShipmentsPage() {
       </div>
 
       {loading ? (
-        <div style={s.emptyState}>Yükleniyor...</div>
+      <div style={s.emptyState}>{t('common.loading')}</div>
       ) : filtered.length === 0 ? (
         <div style={s.emptyState}>{t('dashboard.noShipments')}</div>
       ) : (
@@ -142,14 +141,6 @@ export default function ShipmentsPage() {
                 onMouseLeave={e => (e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.05)')}
               >
                 <div style={s.cardBody} onClick={() => setExpandedShipment(isExpanded ? null : shipment.id)}>
-                  <div onClick={e => e.stopPropagation()} style={{ flexShrink: 0 }}>
-                    <QRCodeDisplay
-                      trackingCode={shipment.trackingCode}
-                      qrCode={shipment.qrCode || ''}
-                      shipmentData={{ senderName: shipment.senderName, receiverName: shipment.receiverName, receiverPhone: shipment.receiverPhone, weight: shipment.weight, route: shipment.route }}
-                    />
-                  </div>
-
                   <div style={s.info}>
                     <div style={s.topRow}>
                       <button

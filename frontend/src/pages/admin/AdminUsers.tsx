@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'react-hot-toast'
 import { useAuth } from '../../context/AuthContext'
@@ -6,6 +6,12 @@ import {
   CheckCircleIcon,
   XCircleIcon,
   ExclamationTriangleIcon,
+  TrashIcon,
+  PencilIcon,
+  UserMinusIcon,
+  UserPlusIcon,
+  XMarkIcon,
+  UserIcon,
 } from '@heroicons/react/24/outline'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001'
@@ -35,6 +41,17 @@ export default function AdminUsers() {
   const [banReason, setBanReason] = useState('')
   const [processingAction, setProcessingAction] = useState(false)
 
+  // Edit Modal State
+  const [editModalOpen, setEditModalOpen] = useState(false)
+  const [editingUser, setEditingUser] = useState<User | null>(null)
+  const [editName, setEditName] = useState('')
+  const [editPhone, setEditPhone] = useState('')
+  const [saving, setSaving] = useState(false)
+
+  // Modal içine tıklamayı yakalamak için ref
+  const editModalRef = useRef<HTMLDivElement>(null)
+  const actionModalRef = useRef<HTMLDivElement>(null)
+
   useEffect(() => {
     fetchUsers()
   }, [])
@@ -52,7 +69,7 @@ export default function AdminUsers() {
       }
     } catch (error) {
       console.error(error)
-      toast.error(t('common.error') )
+      toast.error(t('common.error'))
     } finally {
       setLoading(false)
     }
@@ -73,10 +90,10 @@ export default function AdminUsers() {
       })
       
       if (response.ok) {
-        toast.success(isBanned ? t('common.unbanSuccess')  : t('common.banSuccess') )
+        toast.success(isBanned ? t('common.unbanSuccess') : t('common.banSuccess'))
         fetchUsers()
       } else {
-        toast.error(t('common.error') )
+        toast.error(t('common.error'))
       }
     } catch (error) {
       console.error('Ban hatası:', error)
@@ -87,7 +104,7 @@ export default function AdminUsers() {
   const handleRoleChange = async (id: string, newRole: string) => {
     const user = users.find(u => u.id === id)
     if (user?.role === 'super_admin') {
-      toast.error(t('common.superAdminProtected') )
+      toast.error(t('common.superAdminProtected'))
       return
     }
 
@@ -102,21 +119,21 @@ export default function AdminUsers() {
       })
       
       if (response.ok) {
-        toast.success(t('common.roleUpdated') )
+        toast.success(t('common.roleUpdated'))
         fetchUsers()
       } else {
-        toast.error(t('common.error') )
+        toast.error(t('common.error'))
       }
     } catch (error) {
       console.error('Rol hatası:', error)
-      toast.error(t('common.error') )
+      toast.error(t('common.error'))
     }
   }
 
   const handleDelete = async (id: string) => {
     const user = users.find(u => u.id === id)
     if (user?.role === 'super_admin') {
-      toast.error(t('common.superAdminProtected') )
+      toast.error(t('common.superAdminProtected'))
       return
     }
 
@@ -129,14 +146,62 @@ export default function AdminUsers() {
       })
       
       if (response.ok) {
-        toast.success(t('common.deleted') )
+        toast.success(t('common.deleted'))
         fetchUsers()
       } else {
-        toast.error(t('common.error') )
+        toast.error(t('common.error'))
       }
     } catch (error) {
       console.error('Silme hatası:', error)
-      toast.error(t('common.error') )
+      toast.error(t('common.error'))
+    }
+  }
+
+  // Edit Functions
+  const openEditModal = (user: User) => {
+    if (user.role === 'super_admin') {
+      toast.error(t('common.superAdminProtected'))
+      return
+    }
+    setEditingUser(user)
+    setEditName(user.name || '')
+    setEditPhone(user.phoneNumber)
+    setEditModalOpen(true)
+  }
+
+  const handleEditSave = async () => {
+    if (!editingUser) return
+    if (!editName.trim()) {
+      toast.error(t('common.nameRequired'))
+      return
+    }
+
+    setSaving(true)
+    try {
+      const response = await fetch(`${API_URL}/api/users/${editingUser.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          name: editName.trim(),
+          phoneNumber: editPhone.trim(),
+        }),
+      })
+
+      if (response.ok) {
+        toast.success(t('common.updateSuccess'))
+        setEditModalOpen(false)
+        fetchUsers()
+      } else {
+        toast.error(t('common.error'))
+      }
+    } catch (error) {
+      console.error('Düzenleme hatası:', error)
+      toast.error(t('common.error'))
+    } finally {
+      setSaving(false)
     }
   }
 
@@ -167,6 +232,19 @@ export default function AdminUsers() {
       setPendingAction(null)
     } finally {
       setProcessingAction(false)
+    }
+  }
+
+  // Modal dışına tıklama handler'ları
+  const handleEditModalOutsideClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (editModalRef.current && !editModalRef.current.contains(e.target as Node)) {
+      setEditModalOpen(false)
+    }
+  }
+
+  const handleActionModalOutsideClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (actionModalRef.current && !actionModalRef.current.contains(e.target as Node)) {
+      setPendingAction(null)
     }
   }
 
@@ -261,22 +339,31 @@ export default function AdminUsers() {
                       {isSuperAdminUser ? (
                         <span className="text-xs text-gray-400">{t('common.protected')}</span>
                       ) : (
-                        <div className="flex flex-wrap gap-2">
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            onClick={() => openEditModal(user)}
+                            className="p-1.5 rounded-lg text-blue-500 hover:bg-blue-50 hover:text-blue-700 transition-colors"
+                            title={t('common.edit')}
+                          >
+                            <PencilIcon className="h-4 w-4" />
+                          </button>
                           <button
                             onClick={() => requestUserAction(user.isBanned ? 'unban' : 'ban', user)}
-                            className={`px-2 py-1 rounded text-xs font-medium ${
+                            className={`p-1.5 rounded-lg transition-colors ${
                               user.isBanned
-                                ? 'bg-green-100 text-green-700 hover:bg-green-200'
-                                : 'bg-red-100 text-red-700 hover:bg-red-200'
+                                ? 'text-green-500 hover:bg-green-50 hover:text-green-700'
+                                : 'text-orange-500 hover:bg-orange-50 hover:text-orange-700'
                             }`}
+                            title={user.isBanned ? t('common.unban') : t('common.ban')}
                           >
-                            {user.isBanned ? t('common.unban') : t('common.ban')}
+                            {user.isBanned ? <UserPlusIcon className="h-4 w-4" /> : <UserMinusIcon className="h-4 w-4" />}
                           </button>
                           <button
                             onClick={() => requestUserAction('delete', user)}
-                            className="px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs font-medium hover:bg-gray-200"
+                            className="p-1.5 rounded-lg text-red-500 hover:bg-red-50 hover:text-red-700 transition-colors"
+                            title={t('common.delete')}
                           >
-                            {t('common.delete')}
+                            <TrashIcon className="h-4 w-4" />
                           </button>
                         </div>
                       )}
@@ -289,19 +376,120 @@ export default function AdminUsers() {
         </table>
       </div>
 
+      {/* Edit Modal - Şık ve Modern */}
+      {editModalOpen && editingUser && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/45 p-4 backdrop-blur-sm"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="edit-user-title"
+          onClick={handleEditModalOutsideClick}
+        >
+          <div 
+            ref={editModalRef}
+            className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-start gap-4 border-b border-slate-100 pb-4">
+              <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-blue-50">
+                <UserIcon className="h-6 w-6 text-blue-600" />
+              </div>
+              <div className="flex-1">
+                <h2 id="edit-user-title" className="text-lg font-semibold text-slate-900">
+                  {t('common.editUser')}
+                </h2>
+                
+              </div>
+              <button
+                onClick={() => setEditModalOpen(false)}
+                className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"
+              >
+                <XMarkIcon className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Form */}
+            <div className="mt-5 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700">
+                  {t('profile.name')}
+                </label>
+                <input
+                  type="text"
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  className="mt-1.5 w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                  placeholder={t('profile.enterName')}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700">
+                  {t('profile.phone')}
+                </label>
+                <input
+                  type="tel"
+                  value={editPhone}
+                  onChange={(e) => setEditPhone(e.target.value)}
+                  className="mt-1.5 w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                  placeholder="+99364726236"
+                />
+              </div>
+            </div>
+
+            {/* Buttons */}
+            <div className="mt-6 flex justify-end gap-3 border-t border-slate-100 pt-4">
+              <button
+                type="button"
+                onClick={() => setEditModalOpen(false)}
+                disabled={saving}
+                className="rounded-xl border border-slate-200 px-5 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {t('common.cancel')}
+              </button>
+              <button
+                type="button"
+                onClick={handleEditSave}
+                disabled={saving}
+                className="rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {saving ? (
+                  <span className="flex items-center gap-2">
+                    <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+                    </svg>
+                    {t('common.saving')}
+                  </span>
+                ) : (
+                  t('common.save')
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Action Confirmation Modal */}
       {pendingAction && (
         <div
-          className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/45 p-4"
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/45 p-4 backdrop-blur-sm"
           role="dialog"
           aria-modal="true"
           aria-labelledby="user-action-title"
+          onClick={handleActionModalOutsideClick}
         >
-          <div className="w-full max-w-sm rounded-lg bg-white p-6 shadow-xl">
+          <div 
+            ref={actionModalRef}
+            className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex items-start gap-4">
-              <div className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full ${
+              <div className={`flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full ${
                 pendingAction.type === 'delete' || pendingAction.type === 'ban' ? 'bg-red-50' : 'bg-green-50'
               }`}>
-                <ExclamationTriangleIcon className={`h-5 w-5 ${
+                <ExclamationTriangleIcon className={`h-6 w-6 ${
                   pendingAction.type === 'delete' || pendingAction.type === 'ban' ? 'text-red-600' : 'text-green-600'
                 }`} />
               </div>
@@ -329,18 +517,18 @@ export default function AdminUsers() {
                 <input
                   value={banReason}
                   onChange={event => setBanReason(event.target.value)}
-                  className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-100"
+                  className="mt-1.5 w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm outline-none transition focus:border-red-500 focus:ring-2 focus:ring-red-100"
                   autoFocus
                 />
               </label>
             )}
 
-            <div className="mt-6 flex justify-end gap-3">
+            <div className="mt-6 flex justify-end gap-3 border-t border-slate-100 pt-4">
               <button
                 type="button"
                 onClick={() => setPendingAction(null)}
                 disabled={processingAction}
-                className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+                className="rounded-xl border border-slate-200 px-5 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {t('common.cancel')}
               </button>
@@ -348,19 +536,27 @@ export default function AdminUsers() {
                 type="button"
                 onClick={confirmPendingAction}
                 disabled={processingAction}
-                className={`rounded-lg px-4 py-2 text-sm font-medium text-white transition disabled:cursor-not-allowed disabled:opacity-60 ${
+                className={`rounded-xl px-5 py-2.5 text-sm font-medium text-white transition disabled:cursor-not-allowed disabled:opacity-60 ${
                   pendingAction.type === 'delete' || pendingAction.type === 'ban'
                     ? 'bg-red-600 hover:bg-red-700'
                     : 'bg-green-600 hover:bg-green-700'
                 }`}
               >
-                {processingAction
-                  ? t('common.loading')
-                  : pendingAction.type === 'delete'
-                    ? t('common.delete')
-                    : pendingAction.type === 'ban'
-                      ? t('common.ban')
-                      : t('common.unban')}
+                {processingAction ? (
+                  <span className="flex items-center gap-2">
+                    <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+                    </svg>
+                    {t('common.loading')}
+                  </span>
+                ) : pendingAction.type === 'delete' ? (
+                  t('common.delete')
+                ) : pendingAction.type === 'ban' ? (
+                  t('common.ban')
+                ) : (
+                  t('common.unban')
+                )}
               </button>
             </div>
           </div>
