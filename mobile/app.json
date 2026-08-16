@@ -23,7 +23,8 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#6366f1"
       },
-      "package": "com.cargo.app"
+      "package": "com.cargo.app",
+      "enableProguardInReleaseBuilds": true
     },
     "plugins": [
       [
