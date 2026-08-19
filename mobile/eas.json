@@ -3,15 +3,8 @@
     "preview": {
       "distribution": "internal",
       "android": {
-        "buildType": "apk"
-      },
-      "env": {
-        "EXPO_PUBLIC_API_URL": "https://cargo-qujk.onrender.com/api"
-      }
-    },
-    "production": {
-      "android": {
-        "buildType": "app-bundle"
+        "buildType": "apk",
+        "gradleCommand": ":app:assembleRelease"
       },
       "env": {
         "EXPO_PUBLIC_API_URL": "https://cargo-qujk.onrender.com/api"

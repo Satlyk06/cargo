@@ -39,15 +39,15 @@ async function bootstrap() {
       isBanned: false,
     });
     await userRepo.save(admin);
-    console.log('✅ Default admin oluşturuldu!');
+    console.log('✅ Default admin döredildi!');
     console.log('📱 Telefon: +99365123456');
-    console.log('🔑 Şifre: admin123');
+    console.log('🔑 Parol: admin123');
   } else {
-    console.log('ℹ️ Admin zaten var');
+    console.log('ℹ️ Admin bar');
   }
   
   await app.listen(3001, '0.0.0.0');
-  console.log(`🚀 Backend çalışıyor: http://localhost:3001`);
+  console.log(`🚀 Backend işleýär: http://localhost:3001`);
   console.log(`📊 PostgreSQL: CargoDB`);
 }
 bootstrap();

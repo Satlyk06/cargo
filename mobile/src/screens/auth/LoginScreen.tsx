@@ -10,6 +10,7 @@ import {
   StyleSheet,
   ScrollView,
   Keyboard,
+  Image,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useTranslation } from 'react-i18next'
@@ -54,10 +55,11 @@ export default function LoginScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.topBar}>
-        <View style={styles.brand}>
-          <View style={styles.brandIcon}><Ionicons name="cube-outline" size={19} color="#fff" /></View>
-          <Text style={styles.brandText}>Cargo Logistics</Text>
-        </View>
+        <Image
+        source={require('../../../assets/icon.png')}
+        style={styles.brandIcon}
+        resizeMode="cover"
+      />
         <View style={styles.languageControl}><LanguageSwitcher withLabel /></View>
       </View>
       <KeyboardAvoidingView
@@ -182,7 +184,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
   },
   brand: { flexDirection: 'row', alignItems: 'center', gap: 9 },
-  brandIcon: { width: 32, height: 32, borderRadius: 8, backgroundColor: '#2563eb', alignItems: 'center', justifyContent: 'center' },
+ brandIcon: {
+  width: 58,
+  height: 48,
+  borderRadius: 21,
+},
   brandText: { fontSize: 14, fontWeight: '700', color: '#0f172a' },
   languageControl: { height: 34, minWidth: 86, borderWidth: 1, borderColor: '#e2e8f0', borderRadius: 9, alignItems: 'center', justifyContent: 'center' },
   title: {

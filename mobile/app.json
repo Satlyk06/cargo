@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "Cargo",
-    "slug": "cargo",
+    "slug": "sxatlyk",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -23,10 +23,19 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#6366f1"
       },
-      "package": "com.cargo.app",
-      "enableProguardInReleaseBuilds": true
+      "package": "com.cargo.app"
     },
     "plugins": [
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "enableProguardInReleaseBuilds": true,
+            "enableShrinkResourcesInReleaseBuilds": true,
+            "enableMinifyInReleaseBuilds": true
+          }
+        }
+      ],
       [
         "expo-navigation-bar",
         {
@@ -50,16 +59,17 @@
       "favicon": "./assets/favicon.png"
     },
     "extra": {
+      "eas": {
+        "projectId": "3bb2bf74-bd84-4376-abe1-2d802ea6afde"
+      },
       "expo-navigation-bar": {
         "visibility": "hidden",
         "behavior": "overlay-swipe",
         "position": "absolute",
         "backgroundColor": "#ffffff",
         "barStyle": "dark"
-      },
-      "eas": {
-        "projectId": "0119ec85-53e0-426f-97fd-361333237ea6"
       }
-    }
+    },
+    "owner": "shatlyk"
   }
 }

@@ -43,6 +43,7 @@ export default function ShipmentsScreen() {
   const [searchTerm, setSearchTerm] = useState('')
   const [activeFilter, setActiveFilter] = useState('all')
   const lastFetched = useRef<number>(0)
+  const inputRef = useRef<TextInput>(null)
 
   const fetchShipments = useCallback(async () => {
     try {
@@ -68,6 +69,11 @@ export default function ShipmentsScreen() {
     setRefreshing(true)
     lastFetched.current = Date.now()
     fetchShipments()
+  }
+
+  const clearSearch = () => {
+    setSearchTerm('')
+    inputRef.current?.focus()
   }
 
   const filters = [
@@ -175,12 +181,22 @@ export default function ShipmentsScreen() {
         <View style={styles.searchWrap}>
           <Ionicons name="search" size={16} color="#94a3b8" style={styles.searchIcon} />
           <TextInput
+            ref={inputRef}
             style={styles.searchInput}
             placeholder={t('common.search')}
             placeholderTextColor="#94a3b8"
             value={searchTerm}
             onChangeText={setSearchTerm}
           />
+          {searchTerm.length > 0 && (
+            <TouchableOpacity 
+              onPress={clearSearch} 
+              style={styles.clearButton}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="close-circle" size={20} color="#94a3b8" />
+            </TouchableOpacity>
+          )}
         </View>
 
         <ScrollView
@@ -251,11 +267,19 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderRadius: 10,
     paddingLeft: 36,
-    paddingRight: 16,
+    paddingRight: 36,
     paddingVertical: 10,
     fontSize: 14,
     borderWidth: 1,
     borderColor: '#e2e8f0',
+  },
+  clearButton: {
+    position: 'absolute',
+    right: 6,
+    top: '40%',
+    transform: [{ translateY: -10 }],
+    zIndex: 1,
+    padding: 4,
   },
   filterContainer: {
     height: 52,
