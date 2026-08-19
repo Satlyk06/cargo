@@ -1,8 +1,18 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '../../context/AuthContext'
 import { toast } from 'react-hot-toast'
-import { BellIcon, CheckIcon, TrashIcon, ArrowPathIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline'
+import { 
+  BellIcon, 
+  CheckIcon, 
+  TrashIcon, 
+  ArrowPathIcon, 
+  ExclamationTriangleIcon,
+  TruckIcon,
+  CheckCircleIcon,
+  CubeIcon,
+  ClipboardDocumentCheckIcon
+} from '@heroicons/react/24/outline'
 import { copyToClipboard } from '../../utils/clipboard'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001'
@@ -29,7 +39,24 @@ export default function NotificationsPage() {
   const [pendingDelete, setPendingDelete] = useState<PendingDelete | null>(null)
   const [deleting, setDeleting] = useState(false)
 
-  useEffect(() => { if (user) fetchNotifications() }, [user])
+  const fetchNotifications = useCallback(async () => {
+    if (!user) return
+    setLoading(true)
+    try {
+      const res = await fetch(`${API_URL}/api/notifications/user/${user?.id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (res.ok) setNotifications(await res.json())
+    } catch { 
+      toast.error(t('common.error')) 
+    } finally { 
+      setLoading(false) 
+    }
+  }, [user, token, t])
+
+  useEffect(() => { 
+    if (user) fetchNotifications() 
+  }, [user, fetchNotifications])
 
   // ✅ Bildirim mesajını çevir
   const translateNotification = (message: string): string => {
@@ -76,6 +103,21 @@ export default function NotificationsPage() {
     return message
   }
 
+  // ✅ Bildirimin tipine göre dinamik ikon seçimi
+  const getNotificationIcon = (message: string) => {
+    const norm = message.toLowerCase()
+    if (norm.includes('teslim') || norm.includes('delivered') || norm.includes('доставлен') || norm.includes('eltildi')) {
+      return { icon: CheckCircleIcon, color: 'text-emerald-600', bg: 'bg-emerald-50 border-emerald-100' }
+    }
+    if (norm.includes('yola') || norm.includes('shipped') || norm.includes('отправлен') || norm.includes('çykdy')) {
+      return { icon: TruckIcon, color: 'text-blue-600', bg: 'bg-blue-50 border-blue-100' }
+    }
+    if (norm.includes('yüklendi') || norm.includes('loaded') || norm.includes('загружен') || norm.includes('ýüklendi')) {
+      return { icon: CubeIcon, color: 'text-amber-600', bg: 'bg-amber-50 border-amber-100' }
+    }
+    return { icon: BellIcon, color: 'text-indigo-600', bg: 'bg-indigo-50 border-indigo-100' }
+  }
+
   const copyTrackingCode = async (trackingCode: string) => {
     try {
       await copyToClipboard(trackingCode)
@@ -100,7 +142,7 @@ export default function NotificationsPage() {
         <button
           type="button"
           onClick={() => copyTrackingCode(trackingCode)}
-          className="font-semibold text-primary-600 underline decoration-primary-300 underline-offset-2 transition hover:text-primary-800"
+          className="inline-flex items-center px-2 py-0.5 mx-1 rounded-md bg-indigo-50 border border-indigo-100 font-mono text-xs font-bold text-indigo-600 hover:bg-indigo-100 hover:text-indigo-700 transition-colors"
           title={t('common.copied')}
         >
           {trackingCode}
@@ -119,16 +161,6 @@ export default function NotificationsPage() {
       day: '2-digit', month: 'short',
       hour: '2-digit', minute: '2-digit'
     })
-  }
-
-  const fetchNotifications = async () => {
-    try {
-      const res = await fetch(`${API_URL}/api/notifications/user/${user?.id}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      if (res.ok) setNotifications(await res.json())
-    } catch { toast.error(t('common.error')) }
-    finally { setLoading(false) }
   }
 
   const markAsRead = async (id: string) => {
@@ -224,181 +256,248 @@ export default function NotificationsPage() {
   const unreadCount = notifications.filter(n => !n.isRead).length
 
   return (
-    <div className="p-4 max-w-4xl mx-auto">
-      <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
-        <div className="flex items-center gap-2">
-          <h1 className="text-2xl font-bold text-slate-800">{t('notifications.title')}</h1>
-          {unreadCount > 0 && (
-            <span className="bg-red-500 text-white text-xs px-2 py-1 rounded-full">
-              {unreadCount} {unreadCount === 1 ? t('notifications.unread', { defaultValue: 'Unread' }) : t('notifications.unreadPlural', { defaultValue: t('notifications.unread', { defaultValue: 'Unread' }) })}
-            </span>
-          )}
-          <span className="text-sm text-slate-400">({notifications.length} {t('notifications.total')})</span>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          {unreadCount > 0 && (
-            <button
-              onClick={markAllAsRead}
-              className="flex items-center gap-1 px-3 py-1.5 text-sm bg-indigo-100 text-indigo-700 rounded-lg hover:bg-indigo-200 transition"
-            >
-              <CheckIcon className="h-4 w-4" />
-              {t('notifications.markAllRead')}
-            </button>
-          )}
-          {selectedIds.length > 0 && (
-            <button
-              onClick={() => setPendingDelete({ type: 'selected' })}
-              className="flex items-center gap-1 px-3 py-1.5 text-sm bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition"
-            >
-              <TrashIcon className="h-4 w-4" />
-              {t('notifications.deleteSelected')} ({selectedIds.length})
-            </button>
-          )}
-          {notifications.length > 0 && (
-            <button
-              onClick={() => setPendingDelete({ type: 'all' })}
-              className="flex items-center gap-1 px-3 py-1.5 text-sm bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition"
-            >
-              <TrashIcon className="h-4 w-4" />
-              {t('notifications.deleteAll')}
-            </button>
-          )}
-          <button
-            onClick={fetchNotifications}
-            className="flex items-center gap-1 px-3 py-1.5 text-sm bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition"
-          >
-            <ArrowPathIcon className="h-4 w-4" />
-            {t('common.refresh')}
-          </button>
-        </div>
-      </div>
-
-      {loading ? (
-        <div className="text-center py-12 text-slate-500">{t('common.loading')}</div>
-      ) : notifications.length === 0 ? (
-        <div className="text-center py-12 bg-white rounded-lg shadow">
-          <BellIcon className="h-12 w-12 text-slate-300 mx-auto mb-3" />
-          <p className="text-slate-500">{t('notifications.noNotifications')}</p>
-        </div>
-      ) : (
-        <div className="bg-white rounded-lg shadow overflow-hidden">
-          <div className="p-3 border-b border-slate-200 bg-slate-50 flex items-center gap-3">
-            <input
-              type="checkbox"
-              checked={selectedIds.length === notifications.length && notifications.length > 0}
-              onChange={toggleSelectAll}
-              className="rounded border-slate-300 text-indigo-500 focus:ring-indigo-500"
-            />
-            <span className="text-sm text-slate-500">
-              {selectedIds.length > 0 ? `${selectedIds.length} ${t('notifications.selected')}` : t('notifications.selectAll')}
-            </span>
+    <div className="min-h-screen bg-slate-50/50 py-8 px-4 sm:px-6 lg:px-8 font-sans">
+      <div className="max-w-3xl mx-auto space-y-6">
+        
+        {/* Header Section */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2.5">
+              <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">
+                {t('notifications.title')}
+              </h1>
+              {unreadCount > 0 && (
+                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-rose-500 text-white shadow-sm shadow-rose-500/20">
+                  {unreadCount}
+                </span>
+              )}
+            </div>
+            <p className="text-xs font-medium text-slate-400 mt-1">
+              {notifications.length} {t('notifications.total')}
+            </p>
           </div>
 
-          <div className="divide-y divide-slate-200">
-            {notifications.map((notification) => (
-              <div
-                key={notification.id}
-                className={`p-4 hover:bg-slate-50 transition flex items-start gap-3 ${
-                  !notification.isRead ? 'bg-indigo-50' : ''
-                }`}
+          {/* Action Buttons Toolbar */}
+          <div className="flex flex-wrap items-center gap-2">
+            {unreadCount > 0 && (
+              <button
+                onClick={markAllAsRead}
+                className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-indigo-700 bg-indigo-50 border border-indigo-100 rounded-xl hover:bg-indigo-100 transition-colors shadow-sm"
               >
-                <input
-                  type="checkbox"
-                  checked={selectedIds.includes(notification.id)}
-                  onChange={() => toggleSelect(notification.id)}
-                  className="mt-1 rounded border-slate-300 text-indigo-500 focus:ring-indigo-500"
-                />
-                
-                <div className="flex-1 min-w-0">
-                  <p className={`${!notification.isRead ? 'font-semibold text-slate-800' : 'text-slate-600'}`}>
-                    {renderNotificationMessage(notification.message)}
-                  </p>
-                  <div className="flex items-center gap-3 mt-1">
-                    <span className="text-xs text-slate-400">
-                      {formatDate(notification.createdAt)}
-                    </span>
-                    {!notification.isRead && (
-                      <span className="text-xs bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full">
-                        {t('notifications.unread') || 'Yeni'}
-                      </span>
-                    )}
-                    {notification.isRead && (
-                      <span className="text-xs text-slate-400">✓ {t('notifications.read') || 'Okundu'}</span>
-                    )}
-                  </div>
-                </div>
+                <ClipboardDocumentCheckIcon className="h-4 w-4" />
+                <span>{t('notifications.markAllRead')}</span>
+              </button>
+            )}
 
-                <div className="flex gap-1 flex-shrink-0">
-                  {!notification.isRead && (
-                    <button
-                      onClick={() => markAsRead(notification.id)}
-                      className="p-1 text-indigo-500 hover:text-indigo-700 hover:bg-indigo-50 rounded transition"
-                      title={t('common.edit')}
-                    >
-                      <CheckIcon className="h-5 w-5" />
-                    </button>
-                  )}
-                  <button
-                    onClick={() => setPendingDelete({ type: 'single', id: notification.id })}
-                    className="p-1 text-red-400 hover:text-red-600 hover:bg-red-50 rounded transition"
-                    title={t('common.delete')}
-                  >
-                    <TrashIcon className="h-5 w-5" />
-                  </button>
+            {selectedIds.length > 0 && (
+              <button
+                onClick={() => setPendingDelete({ type: 'selected' })}
+                className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-rose-700 bg-rose-50 border border-rose-100 rounded-xl hover:bg-rose-100 transition-colors shadow-sm"
+              >
+                <TrashIcon className="h-4 w-4" />
+                <span>{t('notifications.deleteSelected')} ({selectedIds.length})</span>
+              </button>
+            )}
+
+            {notifications.length > 0 && selectedIds.length === 0 && (
+              <button
+                onClick={() => setPendingDelete({ type: 'all' })}
+                className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-slate-600 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 hover:text-slate-900 transition-colors shadow-sm"
+              >
+                <TrashIcon className="h-4 w-4 text-slate-400" />
+                <span>{t('notifications.deleteAll')}</span>
+              </button>
+            )}
+
+            <button
+              onClick={fetchNotifications}
+              className="p-2 text-slate-500 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 hover:text-slate-800 transition-colors shadow-sm"
+              title={t('common.refresh')}
+            >
+              <ArrowPathIcon className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+            </button>
+          </div>
+        </div>
+
+        {/* Content Section */}
+        {loading ? (
+          /* Skeleton Loader */
+          <div className="bg-white rounded-3xl p-4 border border-slate-100 shadow-sm space-y-4">
+            {[1, 2, 3].map(i => (
+              <div key={i} className="flex items-center gap-4 p-4 animate-pulse">
+                <div className="w-10 h-10 rounded-2xl bg-slate-100 flex-shrink-0" />
+                <div className="flex-1 space-y-2">
+                  <div className="h-4 bg-slate-100 rounded w-3/4" />
+                  <div className="h-3 bg-slate-100 rounded w-1/4" />
                 </div>
               </div>
             ))}
           </div>
-        </div>
-      )}
-
-      {pendingDelete && (
-        <div
-          className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/45 p-4"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="notification-delete-title"
-        >
-          <div className="w-full max-w-sm rounded-lg bg-white p-6 shadow-xl">
-            <div className="flex items-start gap-4">
-              <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-red-50">
-                <ExclamationTriangleIcon className="h-5 w-5 text-red-600" />
-              </div>
-              <div>
-                <h2 id="notification-delete-title" className="text-lg font-semibold text-slate-900">
-                  {pendingDelete.type === 'single' && t('notifications.deleteOneTitle', { defaultValue: t('common.deleteTitle') })}
-                  {pendingDelete.type === 'selected' && t('notifications.deleteSelectedTitle', { defaultValue: t('common.deleteTitle') })}
-                  {pendingDelete.type === 'all' && t('notifications.deleteAllTitle', { defaultValue: t('common.deleteTitle') })}
-                </h2>
-                <p className="mt-1 text-sm leading-6 text-slate-600">
-                  {pendingDelete.type === 'single' && t('notifications.deleteOneConfirm')}
-                  {pendingDelete.type === 'selected' && t('notifications.deleteSelectedConfirm', { count: selectedIds.length })}
-                  {pendingDelete.type === 'all' && t('notifications.deleteAllConfirm')}
-                </p>
-              </div>
+        ) : notifications.length === 0 ? (
+          /* Empty State */
+          <div className="bg-white rounded-3xl p-12 text-center border border-slate-100 shadow-xl shadow-indigo-500/5 space-y-3">
+            <div className="w-16 h-16 rounded-2xl bg-indigo-50 text-indigo-500 flex items-center justify-center mx-auto mb-4">
+              <BellIcon className="h-8 w-8" />
+            </div>
+            <h3 className="text-base font-bold text-slate-800">
+              {t('notifications.noNotifications')}
+            </h3>
+            <p className="text-xs text-slate-400 max-w-sm mx-auto">
+              {t('notifications.emptyStateSub', { defaultValue: 'Yeni bir bildirim geldiğinde burada görünecektir.' })}
+            </p>
+          </div>
+        ) : (
+          /* Notifications List Container */
+          <div className="bg-white rounded-3xl border border-slate-100 shadow-xl shadow-indigo-500/5 overflow-hidden">
+            
+            {/* Select All Bar */}
+            <div className="px-5 py-3.5 border-b border-slate-100 bg-slate-50/50 flex items-center gap-3">
+              <input
+                type="checkbox"
+                checked={selectedIds.length === notifications.length && notifications.length > 0}
+                onChange={toggleSelectAll}
+                className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500/20 focus:ring-offset-0 transition cursor-pointer"
+              />
+              <span className="text-xs font-bold text-slate-500">
+                {selectedIds.length > 0 ? `${selectedIds.length} ${t('notifications.selected')}` : t('notifications.selectAll')}
+              </span>
             </div>
 
-            <div className="mt-6 flex justify-end gap-3">
-              <button
-                type="button"
-                onClick={() => setPendingDelete(null)}
-                disabled={deleting}
-                className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {t('common.cancel')}
-              </button>
-              <button
-                type="button"
-                onClick={confirmDelete}
-                disabled={deleting}
-                className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {deleting ? t('common.loading') : t('common.delete')}
-              </button>
+            {/* Notification Rows */}
+            <div className="divide-y divide-slate-100">
+              {notifications.map((notification) => {
+                const iconConfig = getNotificationIcon(notification.message)
+                const IconComponent = iconConfig.icon
+                const isSelected = selectedIds.includes(notification.id)
+
+                return (
+                  <div
+                    key={notification.id}
+                    className={`group relative p-4 sm:p-5 transition-all flex items-start gap-3.5 sm:gap-4 ${
+                      !notification.isRead 
+                        ? 'bg-indigo-50/40 hover:bg-indigo-50/70' 
+                        : 'hover:bg-slate-50/80'
+                    } ${isSelected ? 'bg-slate-50' : ''}`}
+                  >
+                    {/* Unread Indicator Bar */}
+                    {!notification.isRead && (
+                      <div className="absolute left-0 top-0 bottom-0 w-1 bg-indigo-600 rounded-r" />
+                    )}
+
+                    {/* Checkbox */}
+                    <div className="pt-1.5">
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => toggleSelect(notification.id)}
+                        className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500/20 focus:ring-offset-0 transition cursor-pointer"
+                      />
+                    </div>
+
+                    {/* Category Icon */}
+                    <div className={`w-10 h-10 rounded-2xl border ${iconConfig.bg} flex items-center justify-center flex-shrink-0 mt-0.5`}>
+                      <IconComponent className={`w-5 h-5 ${iconConfig.color}`} />
+                    </div>
+
+                    {/* Message Details */}
+                    <div className="flex-1 min-w-0 pr-2">
+                      <p className={`text-sm leading-relaxed ${!notification.isRead ? 'font-bold text-slate-900' : 'font-medium text-slate-600'}`}>
+                        {renderNotificationMessage(notification.message)}
+                      </p>
+
+                      <div className="flex flex-wrap items-center gap-2 mt-2">
+                        <span className="text-[11px] font-semibold text-slate-400">
+                          {formatDate(notification.createdAt)}
+                        </span>
+
+                        {!notification.isRead ? (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-indigo-100 text-indigo-700">
+                            {t('notifications.unread') || 'Yeni'}
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-400">
+                            <CheckIcon className="w-3 h-3 text-emerald-500" />
+                            {t('notifications.read') || 'Okundu'}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="flex items-center gap-1 opacity-80 sm:opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+                      {!notification.isRead && (
+                        <button
+                          onClick={() => markAsRead(notification.id)}
+                          className="p-1.5 rounded-xl text-indigo-600 hover:bg-indigo-100/60 transition-colors"
+                          title={t('notifications.markAsRead') || 'Okundu İşaretle'}
+                        >
+                          <CheckIcon className="h-4 w-4" />
+                        </button>
+                      )}
+                      <button
+                        onClick={() => setPendingDelete({ type: 'single', id: notification.id })}
+                        className="p-1.5 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
+                        title={t('common.delete')}
+                      >
+                        <TrashIcon className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+                )
+              })}
             </div>
           </div>
-        </div>
-      )}
+        )}
+
+        {/* ── Confirm Delete Modal ── */}
+        {pendingDelete && (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-fade-in"
+            role="dialog"
+            aria-modal="true"
+          >
+            <div className="w-full max-w-sm rounded-3xl bg-white p-6 shadow-2xl space-y-5 animate-slide-up">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-2xl bg-rose-50 border border-rose-100 flex items-center justify-center flex-shrink-0">
+                  <ExclamationTriangleIcon className="h-6 w-6 text-rose-600" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-slate-900">
+                    {pendingDelete.type === 'single' && t('notifications.deleteOneTitle', { defaultValue: t('common.deleteTitle') })}
+                    {pendingDelete.type === 'selected' && t('notifications.deleteSelectedTitle', { defaultValue: t('common.deleteTitle') })}
+                    {pendingDelete.type === 'all' && t('notifications.deleteAllTitle', { defaultValue: t('common.deleteTitle') })}
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    {pendingDelete.type === 'single' && t('notifications.deleteOneConfirm')}
+                    {pendingDelete.type === 'selected' && t('notifications.deleteSelectedConfirm', { count: selectedIds.length })}
+                    {pendingDelete.type === 'all' && t('notifications.deleteAllConfirm')}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-2.5 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setPendingDelete(null)}
+                  disabled={deleting}
+                  className="px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors disabled:opacity-50"
+                >
+                  {t('common.cancel')}
+                </button>
+                <button
+                  type="button"
+                  onClick={confirmDelete}
+                  disabled={deleting}
+                  className="px-4 py-2.5 rounded-xl bg-rose-600 text-xs font-bold text-white hover:bg-rose-700 transition-colors shadow-md shadow-rose-600/20 disabled:opacity-50"
+                >
+                  {deleting ? t('common.loading') : t('common.delete')}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+      </div>
     </div>
   )
 }

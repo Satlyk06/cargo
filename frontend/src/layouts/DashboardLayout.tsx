@@ -1,3 +1,4 @@
+import { useState, useEffect, useCallback } from 'react'
 import { Link, Outlet, useNavigate, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import {
@@ -8,21 +9,51 @@ import LanguageSwitcher from '../components/common/LanguageSwitcher'
 import NotificationDropdown from '../components/dashboard/NotificationDropdown'
 import { useAuth } from '../context/AuthContext'
 
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001'
+
 export default function DashboardLayout() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const location = useLocation()
-  const { user, isAdmin, logout } = useAuth()
+  const { user, token, isAdmin, logout } = useAuth()
+
+  // Okunmamış bildirim sayısı durumu (Alt Navbar için)
+  const [unreadCount, setUnreadCount] = useState<number>(0)
 
   const handleLogout = () => { logout(); navigate('/login') }
+
+  // Okunmamış bildirim sayısını çekme işlevi
+  const fetchUnreadCount = useCallback(async () => {
+    if (!user?.id || !token) return
+    try {
+      const res = await fetch(`${API_URL}/api/notifications/user/${user.id}/count`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (res.ok) {
+        const data = await res.json()
+        setUnreadCount(data.count)
+      }
+    } catch (error) {
+      console.error('Okunmamış bildirim sayısı çekilemedi:', error)
+    }
+  }, [user?.id, token])
+
+  // Polling (30 saniyede bir güncelle)
+  useEffect(() => {
+    if (user) {
+      fetchUnreadCount()
+      const interval = setInterval(fetchUnreadCount, 30000)
+      return () => clearInterval(interval)
+    }
+  }, [user, fetchUnreadCount])
 
   const initials = (user?.name || user?.phoneNumber || 'U')
     .split(' ').map((w: string) => w[0]).slice(0, 2).join('').toUpperCase()
 
   const roleLabel =
-  user?.role === 'super_admin' ? t('profile.roles.super_admin') :
-  user?.role === 'admin'       ? t('profile.roles.admin') :
-                                 t('profile.roles.user')
+    user?.role === 'super_admin' ? t('profile.roles.super_admin') :
+    user?.role === 'admin'       ? t('profile.roles.admin') :
+                                   t('profile.roles.user')
 
   const isActive = (path: string) =>
     path === '/dashboard'
@@ -32,15 +63,15 @@ export default function DashboardLayout() {
   const cargoLabel = t('common.cargoManagementShort', { defaultValue: 'Ýükler' })
 
   const navItems = [
-  { icon: HomeIcon,  label: t('common.home'),          path: '/dashboard' },
-  { icon: TruckIcon, label: cargoLabel, path: '/dashboard/shipments' },
-  { icon: BellIcon,  label: t('common.notifications'),  path: '/dashboard/notifications' },
-  { icon: UserIcon,  label: t('profile.title'),         path: '/dashboard/profile' },
-  ...(isAdmin
-    ? [{ icon: Cog6ToothIcon, label: t('common.admin'), path: '/admin-panel' }]
-    : []
-  ),
-]
+    { icon: HomeIcon,  label: t('common.home'),          path: '/dashboard' },
+    { icon: TruckIcon, label: cargoLabel,               path: '/dashboard/shipments' },
+    { icon: BellIcon,  label: t('common.notifications'),  path: '/dashboard/notifications', isNotification: true },
+    { icon: UserIcon,  label: t('profile.title'),         path: '/dashboard/profile' },
+    ...(isAdmin
+      ? [{ icon: Cog6ToothIcon, label: t('common.admin'), path: '/admin-panel' }]
+      : []
+    ),
+  ]
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col font-sans">
@@ -62,6 +93,7 @@ export default function DashboardLayout() {
           {/* Right */}
           <div className="flex items-center gap-1.5 sm:gap-2 ml-auto shrink-0">
             <LanguageSwitcher />
+            {/* unreadCount ve yenileme fonksiyonunu NotificationDropdown'a geçebilirsiniz */}
             <NotificationDropdown />
 
             <div className="h-6 w-px bg-slate-200 mx-1" />
@@ -115,6 +147,8 @@ export default function DashboardLayout() {
         <div className="max-w-lg mx-auto flex justify-around items-center h-16 px-1 sm:px-2">
           {navItems.map(item => {
             const active = isActive(item.path)
+            const isBell = item.isNotification
+
             return (
               <Link
                 key={item.path}
@@ -125,6 +159,17 @@ export default function DashboardLayout() {
               >
                 <div className="relative">
                   <item.icon className="h-6 w-6" />
+
+                  {/* Alt Navbar Bildirim Rozeti (Ping Efekti & Sayı) */}
+                  {isBell && unreadCount > 0 && (
+                    <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
+                      <span className="relative inline-flex rounded-full h-4 min-w-[22px] px-1 bg-red-500 text-white text-[9px] font-bold items-center justify-center border-2 border-white">
+                        {unreadCount > 9 ? '9+' : unreadCount}
+                      </span>
+                    </span>
+                  )}
+
                   {active && (
                     <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-indigo-500" />
                   )}

@@ -356,7 +356,7 @@ export default function LoginPage() {
                       <input
                         {...register('phoneNumber')}
                         type="tel"
-                        placeholder="+993 65 123 456"
+                        placeholder="+993 65 866422"
                         className="w-full pl-10 pr-4 py-2.5 text-sm rounded-lg transition focus:outline-none"
                         style={{
                           background: errors.phoneNumber ? '#fef2f2' : '#f8fafc',
