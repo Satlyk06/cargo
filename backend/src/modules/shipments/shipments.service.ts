@@ -79,6 +79,9 @@ export class ShipmentsService {
   }
 
   private async generateQRCode(trackingCode: string, data: any): Promise<string> {
+    // This legacy column is now reserved for shipment photos.
+    return null;
+
     try {
       const qrData = JSON.stringify({
         trackingCode: trackingCode,
@@ -141,6 +144,9 @@ export class ShipmentsService {
 
     const shipment = this.shipmentRepository.create({
       ...shipmentData,
+      senderName: shipmentData.senderName?.trim() || '*',
+      weight: shipmentData.weight ?? 0,
+      price: shipmentData.price ?? 0,
       trackingCode,
       qrCode,
       senderId: sender.id,
@@ -159,6 +165,15 @@ export class ShipmentsService {
     );
 
     return savedShipment;
+  }
+
+  async updatePhoto(id: string, photoData: string): Promise<Shipment> {
+    const shipment = await this.findById(id);
+    if (!shipment) {
+      throw new NotFoundException('Kargo bulunamadı');
+    }
+    shipment.qrCode = photoData;
+    return await this.shipmentRepository.save(shipment);
   }
 
   async update(id: string, shipmentData: Partial<Shipment>): Promise<Shipment> {

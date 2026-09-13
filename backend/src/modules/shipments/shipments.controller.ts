@@ -1,4 +1,5 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, Patch } from '@nestjs/common';
+import { BadRequestException, Controller, Get, Post, Put, Delete, Body, Param, Patch, UploadedFile, UseInterceptors } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { ShipmentsService } from './shipments.service';
 import { Shipment } from './entities/shipment.entity';
 
@@ -24,6 +25,17 @@ export class ShipmentsController {
   @Post()
   async create(@Body() shipmentData: Partial<Shipment>): Promise<Shipment> {
     return await this.shipmentsService.create(shipmentData);
+  }
+
+  @Post(':id/photo')
+  @UseInterceptors(FileInterceptor('photo', { limits: { fileSize: 5 * 1024 * 1024 } }))
+  async uploadPhoto(@Param('id') id: string, @UploadedFile() file: any): Promise<Shipment> {
+    if (!file?.buffer || !file.mimetype?.startsWith('image/')) {
+      throw new BadRequestException('Geçerli bir fotoğraf gerekli');
+    }
+
+    const photoData = `data:${file.mimetype};base64,${file.buffer.toString('base64')}`;
+    return await this.shipmentsService.updatePhoto(id, photoData);
   }
 
   @Put(':id')

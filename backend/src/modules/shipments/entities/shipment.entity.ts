@@ -12,7 +12,7 @@ export class Shipment {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ length: 100 })
+  @Column({ length: 100, default: '*' })
   senderName: string;
 
   @Column({ length: 100 })
@@ -21,10 +21,10 @@ export class Shipment {
   @Column({ length: 20 })
   receiverPhone: string;
 
-  @Column('decimal', { precision: 10, scale: 2 })
+  @Column('decimal', { precision: 10, scale: 2, default: 0 })
   weight: number;
 
-  @Column('decimal', { precision: 10, scale: 2 })
+  @Column('decimal', { precision: 10, scale: 2, default: 0 })
   price: number;
 
   @Column({ type: 'jsonb', default: [] })
