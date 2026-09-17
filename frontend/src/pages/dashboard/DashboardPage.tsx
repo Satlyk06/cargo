@@ -12,7 +12,7 @@ import {
   ArrowDownLeftIcon
 } from '@heroicons/react/24/outline'
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001'
+const API_URL = (import.meta.env.VITE_API_URL || 'https://cargo-qujk.onrender.com').replace(/\/api\/?$/, '')
 
 interface Shipment {
   id: string
@@ -54,11 +54,11 @@ export default function DashboardPage() {
           delivered: data.filter((s) => s.status === 'delivered').length,
         })
       } else {
-        toast.error(t('common.error') || 'Veriler yüklenemedi')
+        toast.error(t('common.shipmentsLoadError'))
       }
     } catch (error) {
       console.error('Shipments loading error:', error)
-      toast.error(t('common.error') || 'Veriler yüklenemedi')
+      toast.error(t('common.shipmentsLoadError'))
     } finally {
       setLoading(false)
     }
@@ -79,9 +79,9 @@ export default function DashboardPage() {
   const copyTrackingCode = async (trackingCode: string) => {
     try {
       await copyToClipboard(trackingCode)
-      toast.success(t('common.copied') || 'Kopyalandı')
+      toast.success(t('common.copied'))
     } catch {
-      toast.error(t('common.error') || 'Hata oluştu')
+      toast.error(t('common.error'))
     }
   }
 
@@ -236,7 +236,7 @@ export default function DashboardPage() {
                           type="button"
                           onClick={() => copyTrackingCode(shipment.trackingCode)}
                           className="group inline-flex items-center gap-1.5 text-xs sm:text-sm font-semibold text-slate-900 hover:text-indigo-600 transition-colors"
-                          title={t('common.copied') || 'Kopyala'}
+                          title={t('common.copy')}
                         >
                           <span>{shipment.trackingCode}</span>
                           <Square2StackIcon className="w-3.5 h-3.5 text-slate-400 group-hover:text-indigo-600 transition-colors" />

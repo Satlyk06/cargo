@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect, useCallback } from 'react'
 import {
   View, Text, TouchableOpacity, ScrollView,
   StyleSheet, Modal, Linking, Pressable, Animated,
-  RefreshControl, Dimensions, Image,
+  RefreshControl, Dimensions, Image, TextInput, Alert, ActivityIndicator,
 } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '../../context/AuthContext'
@@ -63,8 +63,14 @@ export default function ProfileScreen() {
   const [aboutVisible, setAboutVisible] = useState(false)
   const [termsVisible, setTermsVisible] = useState(false)
   const [prohibitedVisible, setProhibitedVisible] = useState(false)
+  const [editProfileVisible, setEditProfileVisible] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
   const [userData, setUserData] = useState(user)
+  const [profileName, setProfileName] = useState(user?.name || '')
+  const [currentPassword, setCurrentPassword] = useState('')
+  const [newPassword, setNewPassword] = useState('')
+  const [savingProfile, setSavingProfile] = useState(false)
+  const [savingPassword, setSavingPassword] = useState(false)
 
   const fetchUserProfile = useCallback(async () => {
     if (!user?.id) return
@@ -72,6 +78,7 @@ export default function ProfileScreen() {
       const response = await api.get(`/users/${user.id}`)
       if (response.data) {
         setUserData(response.data)
+        setProfileName(response.data.name || '')
         if (token) login(token, response.data)
       }
     } catch (error) {
@@ -92,6 +99,47 @@ export default function ProfileScreen() {
   const handleLogout = async () => {
     setConfirmVisible(false)
     await logout()
+  }
+
+  const saveProfile = async () => {
+    if (!user?.id || !profileName.trim()) {
+      Alert.alert(t('common.error'), t('profile.nameRequired'))
+      return
+    }
+
+    setSavingProfile(true)
+    try {
+      const response = await api.put(`/users/${user.id}`, { name: profileName.trim() })
+      setUserData(response.data)
+      if (token) await login(token, response.data)
+      setEditProfileVisible(false)
+      Alert.alert(t('profile.title'), t('profile.updateSuccess'))
+    } catch (error) {
+      console.error('Profile update error:', error)
+      Alert.alert(t('common.error'), t('profile.updateError'))
+    } finally {
+      setSavingProfile(false)
+    }
+  }
+
+  const changePassword = async () => {
+    if (!user?.id || !currentPassword || newPassword.length < 6) {
+      Alert.alert(t('common.error'), t('profile.passwordMinLength'))
+      return
+    }
+
+    setSavingPassword(true)
+    try {
+      await api.put(`/users/${user.id}/password`, { currentPassword, newPassword })
+      setCurrentPassword('')
+      setNewPassword('')
+      Alert.alert(t('profile.title'), t('profile.passwordUpdateSuccess'))
+    } catch (error) {
+      console.error('Password update error:', error)
+      Alert.alert(t('common.error'), t('profile.passwordUpdateError'))
+    } finally {
+      setSavingPassword(false)
+    }
   }
 
   const initials = (userData?.name || userData?.phoneNumber || 'U')
@@ -187,6 +235,16 @@ export default function ProfileScreen() {
               <View style={[styles.roleDot, { backgroundColor: role.dot }]} />
               <Text style={[styles.roleText, { color: role.color }]}>{role.label}</Text>
             </View>
+          <TouchableOpacity 
+  style={styles.editProfileButton} 
+  onPress={() => setEditProfileVisible(true)}
+  activeOpacity={0.7}
+>
+  <View style={styles.editProfileIconWrap}>
+    <Ionicons name="pencil" size={13} color="#4f46e5" />
+  </View>
+  <Text style={styles.editProfileText}>{t('profile.edit')}</Text>
+</TouchableOpacity>
           </View>
 
           <View style={styles.cardDivider} />
@@ -258,6 +316,60 @@ export default function ProfileScreen() {
 
         <Text style={styles.versionTag}>v{APP_VERSION}</Text>
       </ScrollView>
+
+      {/* ── Edit Profile Modal ── */}
+      <AnimatedModal visible={editProfileVisible} onClose={() => setEditProfileVisible(false)}>
+        <View style={styles.sheetHandle} />
+        <View style={styles.modalHeader}>
+          <Text style={styles.modalTitle}>{t('profile.edit')}</Text>
+          <TouchableOpacity onPress={() => setEditProfileVisible(false)} style={styles.modalClose}>
+            <Ionicons name="close" size={20} color="#64748b" />
+          </TouchableOpacity>
+        </View>
+        <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.editModalContent}>
+          <Text style={styles.inputLabel}>{t('profile.name')}</Text>
+          <TextInput
+            value={profileName}
+            onChangeText={setProfileName}
+            placeholder={t('profile.name')}
+            style={styles.textInput}
+            autoCapitalize="words"
+          />
+          <Text style={styles.phoneHint}>{t('profile.phone')}: {userData?.phoneNumber}</Text>
+
+          <View style={styles.passwordSection}>
+            <Text style={styles.passwordTitle}>{t('profile.changePassword')}</Text>
+            <TextInput
+              value={currentPassword}
+              onChangeText={setCurrentPassword}
+              placeholder={t('profile.currentPassword')}
+              style={styles.textInput}
+              secureTextEntry
+              autoCapitalize="none"
+            />
+            <TextInput
+              value={newPassword}
+              onChangeText={setNewPassword}
+              placeholder={t('profile.newPassword')}
+              style={styles.textInput}
+              secureTextEntry
+              autoCapitalize="none"
+            />
+            <TouchableOpacity style={styles.passwordButton} onPress={changePassword} disabled={savingPassword}>
+              {savingPassword ? <ActivityIndicator color="#4f46e5" /> : <Text style={styles.passwordButtonText}>{t('profile.changePassword')}</Text>}
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.editActions}>
+            <TouchableOpacity style={styles.cancelButton} onPress={() => setEditProfileVisible(false)} disabled={savingProfile}>
+              <Text style={styles.cancelButtonText}>{t('common.cancel')}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.saveButton} onPress={saveProfile} disabled={savingProfile}>
+              {savingProfile ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveButtonText}>{t('common.save')}</Text>}
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
+      </AnimatedModal>
 
       {/* ── About Modal ── */}
       <AnimatedModal visible={aboutVisible} onClose={() => setAboutVisible(false)}>
@@ -495,6 +607,38 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     letterSpacing: 0.3,
   },
+  editProfileButton: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  gap: 8,
+  marginTop: 16,
+  paddingLeft: 6,
+  paddingRight: 14,
+  paddingVertical: 6,
+  borderRadius: 22,
+  borderWidth: 1.5,
+  borderColor: '#e0e7ff',
+  backgroundColor: '#fff',
+  shadowColor: '#4f46e5',
+  shadowOffset: { width: 0, height: 2 },
+  shadowOpacity: 0.08,
+  shadowRadius: 6,
+  elevation: 2,
+},
+editProfileIconWrap: {
+  width: 26,
+  height: 26,
+  borderRadius: 13,
+  backgroundColor: '#eef2ff',
+  alignItems: 'center',
+  justifyContent: 'center',
+},
+editProfileText: {
+  color: '#4f46e5',
+  fontSize: 12.5,
+  fontWeight: '700',
+  letterSpacing: 0.3,
+},
   cardDivider: {
     height: 1,
     backgroundColor: '#f8fafc',
@@ -660,6 +804,88 @@ const styles = StyleSheet.create({
     backgroundColor: '#f1f5f9',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  editModalContent: {
+    padding: 20,
+    paddingBottom: 40,
+  },
+  inputLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#334155',
+    marginBottom: 7,
+  },
+  textInput: {
+    height: 48,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    fontSize: 14,
+    color: '#0f172a',
+    marginBottom: 12,
+  },
+  phoneHint: {
+    fontSize: 12,
+    color: '#64748b',
+  },
+  passwordSection: {
+    borderTopWidth: 1,
+    borderTopColor: '#f1f5f9',
+    marginTop: 20,
+    paddingTop: 20,
+  },
+  passwordTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#334155',
+    marginBottom: 12,
+  },
+  passwordButton: {
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#c7d2fe',
+    borderRadius: 12,
+    minHeight: 44,
+    justifyContent: 'center',
+  },
+  passwordButtonText: {
+    color: '#4f46e5',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  editActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 10,
+    marginTop: 24,
+  },
+  cancelButton: {
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    borderRadius: 12,
+    minWidth: 100,
+    height: 46,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cancelButtonText: {
+    color: '#475569',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  saveButton: {
+    backgroundColor: '#4f46e5',
+    borderRadius: 12,
+    minWidth: 100,
+    height: 46,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  saveButtonText: {
+    color: '#fff',
+    fontSize: 13,
+    fontWeight: '700',
   },
 
   // ── About Modal ──

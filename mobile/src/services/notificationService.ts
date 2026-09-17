@@ -6,7 +6,8 @@ import api from './api'
 type NotificationsModule = typeof import('expo-notifications')
 
 // SDK 53+ Expo Go no longer includes Android remote-push native support.
-const isExpoGo = Constants.executionEnvironment === 'storeClient' || Constants.appOwnership === 'expo'
+// `storeClient` is also used by development builds, so do not use it here.
+const isExpoGo = Constants.expoGoConfig != null
 
 function getNotifications(): NotificationsModule | null {
   if (isExpoGo) return null

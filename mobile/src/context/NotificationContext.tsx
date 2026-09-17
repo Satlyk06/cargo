@@ -57,16 +57,9 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     }
   }, [user?.id])
 
- useEffect(() => {
-  refreshNotifications()
-
-  // Her 30 saniyede otomatik yenile
-  const interval = setInterval(() => {
-    refreshNotifications()
-  }, 30000)
-
-  return () => clearInterval(interval)
-}, [refreshNotifications])
+  useEffect(() => {
+    void refreshNotifications()
+  }, [refreshNotifications])
 
   const value = useMemo(() => ({
     notifications,

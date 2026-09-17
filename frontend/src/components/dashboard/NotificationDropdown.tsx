@@ -274,7 +274,7 @@ export default function NotificationDropdown() {
           role="menu"
           tabIndex={-1}
           className="
-            fixed top-16 left-1/2 -translate-x-1/2
+            fixed top-[4.5rem] left-1/2 -translate-x-1/2
             w-[calc(100vw-2rem)] max-w-sm
             sm:absolute sm:top-auto sm:left-auto sm:translate-x-0 sm:right-0 sm:mt-2 sm:w-80
             bg-white rounded-2xl border border-slate-200/80

@@ -54,6 +54,19 @@ function AppContent() {
     requestNotificationPermission()
   }, [])
 
+  // Arka planda gelen bir değişiklikten sonra uygulamaya dönüldüğünde
+  // listeleri yalnız bir kez güncelle.
+  useEffect(() => {
+    const appStateSubscription = AppState.addEventListener('change', (nextAppState) => {
+      if (nextAppState === 'active' && user) {
+        void refreshNotifications()
+        void refreshShipments()
+      }
+    })
+
+    return () => appStateSubscription.remove()
+  }, [user, refreshNotifications, refreshShipments])
+
   // ✅ Push bildirimleri
   useEffect(() => {
     if (user) {

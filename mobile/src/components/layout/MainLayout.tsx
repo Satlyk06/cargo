@@ -1,7 +1,6 @@
 import React from 'react'
 import { View, StyleSheet, StatusBar } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { useNavigation } from '@react-navigation/native'
 import CustomHeader from '../common/CustomHeader'
 
 interface MainLayoutProps {
@@ -17,7 +16,6 @@ export default function MainLayout({
   showBack = false, 
   onBack
 }: MainLayoutProps) {
-  const navigation = useNavigation<any>()
   return (
     <SafeAreaView style={styles.container} edges={['left', 'right', 'bottom']}>
       <StatusBar barStyle="dark-content" backgroundColor="#fff" />
@@ -25,8 +23,6 @@ export default function MainLayout({
         title={title} 
         showBack={showBack} 
         onBack={onBack}
-        onNotifications={() => navigation.navigate('Notifications')}
-        onProfile={() => navigation.navigate('Profile')}
       />
       <View style={styles.content}>
         {children}

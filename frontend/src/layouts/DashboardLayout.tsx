@@ -8,6 +8,7 @@ import {
 import LanguageSwitcher from '../components/common/LanguageSwitcher'
 import NotificationDropdown from '../components/dashboard/NotificationDropdown'
 import { useAuth } from '../context/AuthContext'
+import logoIcon from '../assets/icon.png'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001'
 
@@ -81,14 +82,9 @@ export default function DashboardLayout() {
         <div className="max-w-5xl mx-auto px-4 sm:px-6 py-3 sm:py-0 min-h-16 flex flex-wrap items-center justify-between gap-3">
 
           {/* Logo */}
-          <Link to="/dashboard" className="flex items-center gap-2.5 flex-shrink-0">
-            <div className="w-8 h-8 rounded-lg bg-indigo-500 flex items-center justify-center">
-              <TruckIcon className="h-4 w-4 text-white" />
-            </div>
-            <span className="text-sm font-bold text-slate-800 tracking-tight hidden sm:block">
-              Cargo
-            </span>
-          </Link>
+         <Link to="#" className="flex items-center flex-shrink-0">
+      <img src={logoIcon} alt="Logo" className="h-12 w-13 object-contain" />
+        </Link>
 
           {/* Right */}
           <div className="flex items-center gap-1.5 sm:gap-2 ml-auto shrink-0">
@@ -128,7 +124,7 @@ export default function DashboardLayout() {
 
             <button
               onClick={handleLogout}
-              title="Çıkış"
+              title="Çykyş"
               className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition"
             >
               <ArrowRightOnRectangleIcon className="h-5 w-5" />

@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User, UserRole } from './entities/user.entity';
@@ -61,6 +61,13 @@ export class UsersService {
     if (userData.name !== undefined) {
       user.name = userData.name;
     }
+    if (userData.phoneNumber !== undefined && userData.phoneNumber !== user.phoneNumber) {
+      const existingUser = await this.findByPhone(userData.phoneNumber);
+      if (existingUser && existingUser.id !== id) {
+        throw new ConflictException('Bu telefon numarası zaten kullanılıyor');
+      }
+      user.phoneNumber = userData.phoneNumber;
+    }
     if (userData.isBanned !== undefined) {
       user.isBanned = userData.isBanned;
     }
@@ -71,6 +78,19 @@ export class UsersService {
       user.bannedAt = userData.bannedAt;
     }
     return await this.userRepository.save(user);
+  }
+
+  async changeOwnPassword(id: string, currentPassword: string, newPassword: string): Promise<void> {
+    const user = await this.findById(id);
+    if (!user) throw new NotFoundException('Kullanıcı bulunamadı');
+    if (!currentPassword || !newPassword || newPassword.length < 6) {
+      throw new BadRequestException('Yeni parola en az 6 karakter olmalı');
+    }
+    if (!await bcrypt.compare(currentPassword, user.password)) {
+      throw new BadRequestException('Mevcut parola hatalı');
+    }
+    user.password = await bcrypt.hash(newPassword, 10);
+    await this.userRepository.save(user);
   }
 
   async delete(id: string): Promise<void> {

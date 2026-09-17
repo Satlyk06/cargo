@@ -141,6 +141,13 @@ export class NotificationsService {
     );
   }
 
+  async deleteByShipmentId(shipmentId: string): Promise<void> {
+    await this.notificationRepository.update(
+      { shipmentId, isDeleted: false },
+      { isDeleted: true },
+    );
+  }
+
   async getUnreadCount(userId: string): Promise<number> {
     return await this.notificationRepository.count({
       where: { userId, isRead: false, isDeleted: false },

@@ -15,7 +15,7 @@ export default function AdminProfile() {
 
   const handleSave = async () => {
     if (!name.trim() || name.trim().length < 2) {
-      toast.error(t('profile.nameMinLength') || 'İsim en az 2 karakter olmalı')
+      toast.error(t('profile.nameMinLength'))
       return
     }
 

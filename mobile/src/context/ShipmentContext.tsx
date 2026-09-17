@@ -5,6 +5,7 @@ import { useAuth } from './AuthContext'
 export interface Shipment {
   id: string
   trackingCode: string
+  senderId: string
   senderName: string
   receiverName: string
   weight: number
@@ -46,15 +47,8 @@ export const ShipmentProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   }, [user?.id])
 
   useEffect(() => {
-  void refreshShipments()
-
-  // Her 30 saniyede otomatik yenile
-  const interval = setInterval(() => {
     void refreshShipments()
-  }, 30000)
-
-  return () => clearInterval(interval)
-}, [refreshShipments])
+  }, [refreshShipments])
 
   const value = useMemo(() => ({ shipments, loading, refreshShipments }), [shipments, loading, refreshShipments])
 

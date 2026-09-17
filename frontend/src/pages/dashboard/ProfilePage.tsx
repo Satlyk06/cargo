@@ -17,8 +17,9 @@ import {
   MapPinIcon,
   ExclamationTriangleIcon,
   XMarkIcon,
+  PencilIcon,
 } from '@heroicons/react/24/outline'
-
+import logoIcon from '../../assets/icon.png'
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001'
 
 interface ModalProps {
@@ -84,11 +85,17 @@ export default function ProfilePage() {
   const [termsOpen, setTermsOpen] = useState(false)
   const [prohibitedOpen, setProhibitedOpen] = useState(false)
   const [userData, setUserData] = useState(user)
+  const [editProfileOpen, setEditProfileOpen] = useState(false)
+  const [profileName, setProfileName] = useState(user?.name || '')
+  const [savingProfile, setSavingProfile] = useState(false)
+  const [currentPassword, setCurrentPassword] = useState('')
+  const [newPassword, setNewPassword] = useState('')
+  const [savingPassword, setSavingPassword] = useState(false)
 
   const fetchUserProfile = useCallback(async () => {
     if (!user?.id) return
     try {
-      const response = await fetch(`${API_URL}/users/${user.id}`, {
+      const response = await fetch(`${API_URL}/api/users/${user.id}`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -96,6 +103,7 @@ export default function ProfilePage() {
       if (response.ok) {
         const data = await response.json()
         setUserData(data)
+        setProfileName(data.name || '')
         if (token) login(token, data)
       }
     } catch (error) {
@@ -177,6 +185,62 @@ export default function ProfilePage() {
     toast.success(t('common.logoutSuccess'))
   }
 
+  const saveProfile = async () => {
+    if (!user?.id || !token || !profileName.trim()) {
+      toast.error(t('common.nameRequired'))
+      return
+    }
+    setSavingProfile(true)
+    try {
+      const response = await fetch(`${API_URL}/api/users/${user.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ name: profileName.trim() }),
+      })
+      if (!response.ok) {
+        toast.error(t('profile.updateError'))
+        return
+      }
+      const updatedUser = await response.json()
+      setUserData(updatedUser)
+      login(token, updatedUser)
+      toast.success(t('profile.updateSuccess'))
+      setEditProfileOpen(false)
+    } catch (error) {
+      console.error('Profil güncelleme hatası:', error)
+      toast.error(t('profile.updateError'))
+    } finally {
+      setSavingProfile(false)
+    }
+  }
+
+  const changePassword = async () => {
+    if (!user?.id || !token || !currentPassword || newPassword.length < 6) {
+      toast.error(t('profile.passwordMinLength'))
+      return
+    }
+    setSavingPassword(true)
+    try {
+      const response = await fetch(`${API_URL}/api/users/${user.id}/password`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ currentPassword, newPassword }),
+      })
+      if (!response.ok) {
+        toast.error(t('profile.passwordUpdateError'))
+        return
+      }
+      setCurrentPassword('')
+      setNewPassword('')
+      toast.success(t('profile.passwordUpdateSuccess'))
+    } catch (error) {
+      console.error('Parola güncelleme hatası:', error)
+      toast.error(t('profile.passwordUpdateError'))
+    } finally {
+      setSavingPassword(false)
+    }
+  }
+
   return (
     <div className="min-h-screen bg-slate-50/50 py-8 px-4 sm:px-6 lg:px-8 font-sans">
       <div className="max-w-md mx-auto space-y-5">
@@ -213,6 +277,14 @@ export default function ProfilePage() {
               <span className={`w-2 h-2 rounded-full ${role.dot}`} />
               <span className={`text-xs font-bold ${role.color}`}>{role.label}</span>
             </div>
+            <button
+              type="button"
+              onClick={() => setEditProfileOpen(true)}
+              className="mt-4 inline-flex items-center gap-1.5 rounded-lg text-sm font-semibold text-indigo-600 hover:text-indigo-700"
+            >
+              <PencilIcon className="h-4 w-4" />
+              {t('profile.edit')}
+            </button>
           </div>
 
           {/* Details List */}
@@ -294,14 +366,54 @@ export default function ProfilePage() {
 
         <p className="text-center text-xs font-medium text-slate-300 pt-2">v1.0.0</p>
 
+        <Modal isOpen={editProfileOpen} onClose={() => setEditProfileOpen(false)} title={t('profile.edit')}>
+          <label className="block text-sm font-medium text-slate-700">
+            {t('profile.name')}
+            <input
+              type="text"
+              value={profileName}
+              onChange={(event) => setProfileName(event.target.value)}
+              className="mt-1.5 w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+              autoFocus
+            />
+          </label>
+          <p className="text-xs text-slate-500">{t('profile.phone')}: {userData?.phoneNumber}</p>
+          <div className="space-y-3 border-t border-slate-100 pt-4">
+            <p className="text-sm font-semibold text-slate-700">{t('profile.changePassword')}</p>
+            <input
+              type="password"
+              value={currentPassword}
+              onChange={(event) => setCurrentPassword(event.target.value)}
+              placeholder={t('profile.currentPassword')}
+              className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+            />
+            <input
+              type="password"
+              value={newPassword}
+              onChange={(event) => setNewPassword(event.target.value)}
+              placeholder={t('profile.newPassword')}
+              className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+            />
+            <button type="button" onClick={changePassword} disabled={savingPassword} className="rounded-xl border border-indigo-200 px-4 py-2 text-sm font-medium text-indigo-700 hover:bg-indigo-50 disabled:opacity-60">
+              {savingPassword ? t('common.loading') : t('profile.changePassword')}
+            </button>
+          </div>
+          <div className="flex justify-end gap-3 pt-2">
+            <button type="button" onClick={() => setEditProfileOpen(false)} disabled={savingProfile} className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700">
+              {t('common.cancel')}
+            </button>
+            <button type="button" onClick={saveProfile} disabled={savingProfile} className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-60">
+              {savingProfile ? t('common.loading') : t('common.save')}
+            </button>
+          </div>
+        </Modal>
+
         {/* ── About Modal ── */}
         <Modal isOpen={aboutOpen} onClose={() => setAboutOpen(false)} title={t('profile.aboutTitle')}>
           <div className="flex flex-col items-center text-center pb-6 border-b border-slate-100">
-            <div className="w-20 h-20 rounded-2xl bg-indigo-600 text-white flex items-center justify-center shadow-lg shadow-indigo-500/30 mb-3">
-              <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10" />
-              </svg>
-            </div>
+            <div className="w-20 h-20 rounded-2xl overflow-hidden shadow-lg shadow-indigo-500/30 mb-3">
+  <img src={logoIcon} alt="Logo" className="w-full h-full object-contain" />
+</div>
             <h4 className="text-xl font-black text-slate-900 tracking-tight">{t('common.appName')}</h4>
             <span className="text-xs font-semibold text-slate-400 mt-1">v1.0.0</span>
           </div>

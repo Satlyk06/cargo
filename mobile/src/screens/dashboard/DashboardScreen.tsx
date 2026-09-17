@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef } from 'react'
+import React, { useState, useCallback, useEffect } from 'react'
 import {
   View,
   Text,
@@ -13,6 +13,7 @@ import { useFocusEffect } from '@react-navigation/native'
 import { useAuth } from '../../context/AuthContext'
 import { Ionicons } from '@expo/vector-icons'
 import MainLayout from '../../components/layout/MainLayout'
+import { useShipments } from '../../context/ShipmentContext'
 import api from '../../services/api'
 
 interface Shipment {
@@ -31,11 +32,11 @@ interface Shipment {
 
 export default function DashboardScreen() {
   const { t } = useTranslation()
+  const { shipments: sharedShipments, refreshShipments } = useShipments()
   const { user } = useAuth()
   const [shipments, setShipments] = useState<Shipment[]>([])
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
-  const lastFetched = useRef<number>(0)
 
   const fetchShipments = useCallback(async () => {
     try {
@@ -50,19 +51,19 @@ export default function DashboardScreen() {
     }
   }, [user?.id])
 
+  useEffect(() => {
+    setShipments(sharedShipments)
+    setLoading(false)
+  }, [sharedShipments])
+
   useFocusEffect(
     useCallback(() => {
-      const now = Date.now()
-      if (now - lastFetched.current > 30_000) {
-        lastFetched.current = now
-        void fetchShipments()
-      }
-    }, [fetchShipments]),
+      void refreshShipments()
+    }, [refreshShipments]),
   )
 
   const onRefresh = () => {
     setRefreshing(true)
-    lastFetched.current = Date.now()
     fetchShipments()
   }
 

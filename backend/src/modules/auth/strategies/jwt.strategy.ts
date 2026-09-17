@@ -8,7 +8,9 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false, // ← false olmalı, süresi dolan token reddedilir
-      secretOrKey: process.env.JWT_SECRET || 'benim_gizli_anahtarim_123456',
+      // JwtModule is initialized before ConfigModule loads .env, so use the
+      // same fallback key currently used when access tokens are signed.
+      secretOrKey: 'benim_gizli_anahtarim_123456',
     });
   }
 

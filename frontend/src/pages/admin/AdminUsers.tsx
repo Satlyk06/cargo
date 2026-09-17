@@ -12,6 +12,7 @@ import {
   UserPlusIcon,
   XMarkIcon,
   UserIcon,
+  TruckIcon,
 } from '@heroicons/react/24/outline'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001'
@@ -26,6 +27,16 @@ interface User {
   createdAt: string
 }
 
+interface UserShipment {
+  id: string
+  trackingCode: string
+  senderName: string
+  receiverName: string
+  route: string[]
+  status: string
+  createdAt: string
+}
+
 type PendingUserAction = {
   type: 'ban' | 'unban' | 'delete'
   user: User
@@ -33,7 +44,7 @@ type PendingUserAction = {
 
 export default function AdminUsers() {
   const { t } = useTranslation()
-  const { token } = useAuth()
+  const { token, user: currentUser } = useAuth()
   const [users, setUsers] = useState<User[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
@@ -47,6 +58,9 @@ export default function AdminUsers() {
   const [editName, setEditName] = useState('')
   const [editPhone, setEditPhone] = useState('')
   const [saving, setSaving] = useState(false)
+  const [shipmentUser, setShipmentUser] = useState<User | null>(null)
+  const [userShipments, setUserShipments] = useState<UserShipment[]>([])
+  const [shipmentsLoading, setShipmentsLoading] = useState(false)
 
   // Modal içine tıklamayı yakalamak için ref
   const editModalRef = useRef<HTMLDivElement>(null)
@@ -103,7 +117,7 @@ export default function AdminUsers() {
 
   const handleRoleChange = async (id: string, newRole: string) => {
     const user = users.find(u => u.id === id)
-    if (user?.role === 'super_admin') {
+    if (currentUser?.role !== 'super_admin' || user?.role === 'super_admin') {
       toast.error(t('common.superAdminProtected'))
       return
     }
@@ -132,7 +146,7 @@ export default function AdminUsers() {
 
   const handleDelete = async (id: string) => {
     const user = users.find(u => u.id === id)
-    if (user?.role === 'super_admin') {
+    if (currentUser?.role !== 'super_admin' && user?.role !== 'user') {
       toast.error(t('common.superAdminProtected'))
       return
     }
@@ -159,7 +173,7 @@ export default function AdminUsers() {
 
   // Edit Functions
   const openEditModal = (user: User) => {
-    if (user.role === 'super_admin') {
+    if (currentUser?.role !== 'super_admin' && user.role !== 'user') {
       toast.error(t('common.superAdminProtected'))
       return
     }
@@ -206,13 +220,34 @@ export default function AdminUsers() {
   }
 
   const requestUserAction = (type: PendingUserAction['type'], user: User) => {
-    if (user.role === 'super_admin') {
+    if (currentUser?.role !== 'super_admin' && user.role !== 'user') {
       toast.error(t('common.superAdminProtected'))
       return
     }
 
     setBanReason('')
     setPendingAction({ type, user })
+  }
+
+  const openUserShipments = async (user: User) => {
+    setShipmentUser(user)
+    setUserShipments([])
+    setShipmentsLoading(true)
+    try {
+      const response = await fetch(`${API_URL}/api/shipments/user/${user.id}`, {
+        headers: { 'Authorization': `Bearer ${token}` },
+      })
+      if (!response.ok) {
+        toast.error(t('common.error'))
+        return
+      }
+      setUserShipments(await response.json())
+    } catch (error) {
+      console.error('Kullanıcı kargoları yüklenirken hata:', error)
+      toast.error(t('common.error'))
+    } finally {
+      setShipmentsLoading(false)
+    }
   }
 
   const confirmPendingAction = async () => {
@@ -297,6 +332,7 @@ export default function AdminUsers() {
             ) : (
               filteredUsers.map((user, index) => {
                 const isSuperAdminUser = user.role === 'super_admin'
+                const canManageUser = currentUser?.role === 'super_admin' || user.role === 'user'
                 return (
                   <tr key={user.id} className="hover:bg-gray-50">
                     <td className="px-4 py-3 text-sm text-gray-500">{index + 1}</td>
@@ -312,7 +348,7 @@ export default function AdminUsers() {
                           value={user.role}
                           onChange={(e) => handleRoleChange(user.id, e.target.value)}
                           className="text-sm border border-gray-300 rounded px-2 py-1 focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                          disabled={isSuperAdminUser}
+                          disabled={isSuperAdminUser || currentUser?.role !== 'super_admin'}
                         >
                           <option value="user">👤 {t('common.user')}</option>
                           <option value="admin">🛡️ {t('common.admin')}</option>
@@ -336,10 +372,17 @@ export default function AdminUsers() {
                       {new Date(user.createdAt).toLocaleDateString('tr-TR')}
                     </td>
                     <td className="px-4 py-3">
-                      {isSuperAdminUser ? (
+                      {!canManageUser ? (
                         <span className="text-xs text-gray-400">{t('common.protected')}</span>
                       ) : (
                         <div className="flex items-center gap-1.5">
+                          <button
+                            onClick={() => openUserShipments(user)}
+                            className="p-1.5 rounded-lg text-primary-500 hover:bg-primary-50 hover:text-primary-700 transition-colors"
+                            title={t('adminUsers.viewShipments')}
+                          >
+                            <TruckIcon className="h-4 w-4" />
+                          </button>
                           <button
                             onClick={() => openEditModal(user)}
                             className="p-1.5 rounded-lg text-blue-500 hover:bg-blue-50 hover:text-blue-700 transition-colors"
@@ -377,6 +420,69 @@ export default function AdminUsers() {
       </div>
 
       {/* Edit Modal - Şık ve Modern */}
+      {shipmentUser && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/45 p-4 backdrop-blur-sm"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="user-shipments-title"
+          onClick={() => setShipmentUser(null)}
+        >
+          <div
+            className="w-full max-w-3xl max-h-[85vh] overflow-y-auto rounded-2xl bg-white p-6 shadow-2xl"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-4 border-b border-slate-100 pb-4">
+              <div>
+                <h2 id="user-shipments-title" className="text-lg font-semibold text-slate-900">
+                  {t('adminUsers.shipmentsTitle', { name: shipmentUser.name || shipmentUser.phoneNumber })}
+                </h2>
+                <p className="mt-1 text-sm text-slate-500">{t('adminUsers.relatedShipments')}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShipmentUser(null)}
+                className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+                aria-label="Kapat"
+              >
+                <XMarkIcon className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="mt-5 overflow-x-auto">
+              {shipmentsLoading ? (
+                <p className="py-8 text-center text-sm text-slate-500">{t('common.loading')}</p>
+              ) : userShipments.length === 0 ? (
+                <p className="py-8 text-center text-sm text-slate-500">{t('adminUsers.noShipments')}</p>
+              ) : (
+                <table className="w-full min-w-[620px] text-left">
+                  <thead className="border-b border-slate-200 text-xs uppercase tracking-wide text-slate-500">
+                    <tr>
+                      <th className="px-3 py-2">{t('adminUsers.shipmentCode')}</th>
+                      <th className="px-3 py-2">{t('adminUsers.senderReceiver')}</th>
+                      <th className="px-3 py-2">Rota</th>
+                      <th className="px-3 py-2">Durum</th>
+                      <th className="px-3 py-2">Tarih</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 text-sm text-slate-700">
+                    {userShipments.map((shipment) => (
+                      <tr key={shipment.id}>
+                        <td className="px-3 py-3 font-medium text-slate-900">{shipment.trackingCode}</td>
+                        <td className="px-3 py-3">{shipment.senderName} → {shipment.receiverName}</td>
+                        <td className="px-3 py-3">{shipment.route.join(' → ')}</td>
+                        <td className="px-3 py-3 capitalize">{shipment.status}</td>
+                        <td className="px-3 py-3">{new Date(shipment.createdAt).toLocaleDateString('tr-TR')}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {editModalOpen && editingUser && (
         <div
           className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/45 p-4 backdrop-blur-sm"

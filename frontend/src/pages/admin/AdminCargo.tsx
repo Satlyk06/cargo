@@ -8,6 +8,7 @@ import {
   PlusCircleIcon,
   MinusCircleIcon,
   PencilIcon,
+  MapIcon,
   MapPinIcon,
   TruckIcon,
   CheckCircleIcon,
@@ -29,7 +30,7 @@ interface Shipment {
   currentRouteIndex: number
   status: string
   trackingCode: string
-  qrCode: string
+  qrCode: string | null
   createdAt: string
   shippedAt: string | null
   deliveredAt: string | null
@@ -43,6 +44,7 @@ export default function AdminCargo() {
   const [shipments, setShipments] = useState<Shipment[]>([])
   const [loading, setLoading] = useState(true)
   const [showAddModal, setShowAddModal] = useState(false)
+  const [showEditModal, setShowEditModal] = useState(false)
   const [showRouteModal, setShowRouteModal] = useState(false)
   const [selectedShipment, setSelectedShipment] = useState<Shipment | null>(null)
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null)
@@ -53,13 +55,27 @@ export default function AdminCargo() {
 
   // Form state
   const [formData, setFormData] = useState({
-    senderName: '',
+    senderName: '*',
     receiverName: '',
     receiverPhone: '',
     weight: '',
     price: '',
-    route: [''] as string[],
+    route: ['', ''] as string[],
     manualPrice: false,
+  })
+  const [selectedPhoto, setSelectedPhoto] = useState<File | null>(null)
+  const [previewPhoto, setPreviewPhoto] = useState<string | null>(null)
+  const [editPhoto, setEditPhoto] = useState<File | null>(null)
+  const [editing, setEditing] = useState(false)
+  const [editData, setEditData] = useState({
+    id: '',
+    senderName: '*',
+    receiverName: '',
+    receiverPhone: '',
+    weight: '',
+    price: '',
+    route: ['', ''] as string[],
+    routeStatus: [false, false] as boolean[],
   })
 
   useEffect(() => {
@@ -79,7 +95,7 @@ export default function AdminCargo() {
       }
     } catch (error) {
       console.error('Kargolar yüklenirken hata:', error)
-      toast.error(t('common.error') || 'Kargolar yüklenemedi')
+      toast.error(t('common.error'))
     } finally {
       setLoading(false)
     }
@@ -116,6 +132,8 @@ export default function AdminCargo() {
       }
     }
 
+    if (name === 'price' && value !== '' && !/^\d*\.?\d*$/.test(value)) return
+
     if (name === 'receiverPhone') {
       if (value !== '' && !/^\+?\d*$/.test(value)) return
     }
@@ -140,7 +158,7 @@ export default function AdminCargo() {
 
   const removeRouteStop = (index: number) => {
     if (formData.route.length <= 2) {
-      toast.error(t('shipments.routeMinError') || 'En az 2 durak olmalı (nereden-nereye)')
+      toast.error(t('shipments.routeMinError'))
       return
     }
     const newRoute = formData.route.filter((_, i) => i !== index)
@@ -156,27 +174,18 @@ export default function AdminCargo() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
-    if (!formData.senderName.trim()) {
-      toast.error(t('shipments.senderRequired') || 'Gönderici adı gerekli')
-      return
-    }
     if (!formData.receiverName.trim()) {
-      toast.error(t('shipments.receiverRequired') || 'Alıcı adı gerekli')
+      toast.error(t('shipments.receiverRequired'))
       return
     }
     if (!formData.receiverPhone.trim()) {
-      toast.error(t('shipments.phoneRequired') || 'Alıcı telefon numarası gerekli')
+      toast.error(t('shipments.phoneRequired'))
       return
     }
     if (!formData.receiverPhone.startsWith('+') || !/^\+\d+$/.test(formData.receiverPhone)) {
       toast.error(t('shipments.phoneFormatError') || 'Telefon numarası + ile başlamalı ve sadece rakam içermeli')
       return
     }
-    if (!formData.weight || parseFloat(formData.weight) <= 0) {
-      toast.error(t('shipments.weightRequired') || 'Geçerli ağırlık giriniz')
-      return
-    }
-    
     const validRoute = formData.route.filter(r => r.trim() !== '')
     if (validRoute.length < 2) {
       toast.error(t('shipments.routeMinError') || 'En az 2 durak giriniz (nereden-nereye)')
@@ -184,11 +193,15 @@ export default function AdminCargo() {
     }
 
     try {
-      const weight = parseFloat(formData.weight)
-      const price = formData.manualPrice ? parseFloat(formData.price) : parseFloat(calculatePrice(weight))
+      const weight = formData.weight ? parseFloat(formData.weight) : 0
+      const price = formData.manualPrice && formData.price
+        ? parseFloat(formData.price)
+        : weight > 0
+          ? parseFloat(calculatePrice(weight))
+          : 0
       
       const shipmentData = {
-        senderName: formData.senderName.trim(),
+        senderName: formData.senderName.trim() || '*',
         receiverName: formData.receiverName.trim(),
         receiverPhone: formData.receiverPhone.trim(),
         weight: weight,
@@ -209,6 +222,21 @@ export default function AdminCargo() {
       })
 
       if (response.ok) {
+        const createdShipment: Shipment = await response.json()
+
+        if (selectedPhoto) {
+          const photoData = new FormData()
+          photoData.append('photo', selectedPhoto)
+          const photoResponse = await fetch(`${API_URL}/api/shipments/${createdShipment.id}/photo`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${token}` },
+            body: photoData,
+          })
+
+          if (!photoResponse.ok) {
+            toast.error(t('adminCargo.shipmentCreatedPhotoFailed'))
+          }
+        }
         toast.success(t('shipments.addSuccess') || 'Kargo başarıyla eklendi!')
         setShowAddModal(false)
         resetForm()
@@ -225,7 +253,7 @@ export default function AdminCargo() {
 
   const resetForm = () => {
     setFormData({
-      senderName: '',
+      senderName: '*',
       receiverName: '',
       receiverPhone: '',
       weight: '',
@@ -233,6 +261,120 @@ export default function AdminCargo() {
       route: ['', ''],
       manualPrice: false,
     })
+    setSelectedPhoto(null)
+  }
+
+  const openEditModal = (shipment: Shipment) => {
+    setEditData({
+      id: shipment.id,
+      senderName: shipment.senderName || '*',
+      receiverName: shipment.receiverName,
+      receiverPhone: shipment.receiverPhone,
+      weight: shipment.weight ? String(shipment.weight) : '',
+      price: shipment.price ? String(shipment.price) : '',
+      route: [...shipment.route],
+      routeStatus: [...shipment.routeStatus],
+    })
+    setEditPhoto(null)
+    setShowEditModal(true)
+  }
+
+  const handleEditInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target
+    if ((name === 'weight' || name === 'price') && value !== '' && !/^\d*\.?\d*$/.test(value)) return
+    if (name === 'receiverPhone' && value !== '' && !/^\+?\d*$/.test(value)) return
+    setEditData(prev => ({ ...prev, [name]: value }))
+  }
+
+  const handleEditRouteChange = (index: number, value: string) => {
+    setEditData(prev => ({
+      ...prev,
+      route: prev.route.map((stop, i) => i === index ? value : stop),
+    }))
+  }
+
+  const addEditRouteStop = () => {
+    setEditData(prev => ({
+      ...prev,
+      route: [...prev.route, ''],
+      routeStatus: [...prev.routeStatus, false],
+    }))
+  }
+
+  const removeEditRouteStop = (index: number) => {
+    if (editData.route.length <= 2) {
+      toast.error(t('shipments.routeMinError'))
+      return
+    }
+    setEditData(prev => ({
+      ...prev,
+      route: prev.route.filter((_, i) => i !== index),
+      routeStatus: prev.routeStatus.filter((_, i) => i !== index),
+    }))
+  }
+
+  const handleEditSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!editData.receiverName.trim() || !editData.receiverPhone.trim()) {
+      toast.error(t('adminCargo.receiverDetailsRequired'))
+      return
+    }
+    const validRoute = editData.route.filter(stop => stop.trim())
+    if (validRoute.length < 2) {
+      toast.error(t('shipments.routeMinError') || 'En az 2 durak giriniz')
+      return
+    }
+    if (!editData.receiverPhone.startsWith('+') || !/^\+\d+$/.test(editData.receiverPhone)) {
+      toast.error(t('shipments.phoneFormatError'))
+      return
+    }
+
+    setEditing(true)
+    try {
+      const response = await fetch(`${API_URL}/api/shipments/${editData.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          senderName: editData.senderName.trim() || '*',
+          receiverName: editData.receiverName.trim(),
+          receiverPhone: editData.receiverPhone.trim(),
+          weight: editData.weight ? parseFloat(editData.weight) : 0,
+          price: editData.price ? parseFloat(editData.price) : 0,
+          route: validRoute,
+          routeStatus: editData.routeStatus.filter((_, index) => editData.route[index].trim()),
+        }),
+      })
+
+      if (!response.ok) {
+        toast.error(t('adminCargo.shipmentUpdateFailed'))
+        return
+      }
+
+      if (editPhoto) {
+        const photoData = new FormData()
+        photoData.append('photo', editPhoto)
+        const photoResponse = await fetch(`${API_URL}/api/shipments/${editData.id}/photo`, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${token}` },
+          body: photoData,
+        })
+        if (!photoResponse.ok) {
+          toast.error(t('adminCargo.shipmentUpdatedPhotoFailed'))
+        }
+      }
+
+      toast.success(t('adminCargo.shipmentUpdated'))
+      setShowEditModal(false)
+      fetchShipments()
+    } catch (error) {
+      console.error('Kargo güncelleme hatası:', error)
+      toast.error(t('adminCargo.shipmentUpdateFailed'))
+    } finally {
+      setEditing(false)
+    }
   }
 
   const handleDelete = (id: string) => {
@@ -506,6 +648,7 @@ export default function AdminCargo() {
               <th className="px-4 py-3 text-left text-sm font-semibold text-gray-600">{t('shipments.code')}</th>
               <th className="px-4 py-3 text-left text-sm font-semibold text-gray-600">{t('shipments.sender')}</th>
               <th className="px-4 py-3 text-left text-sm font-semibold text-gray-600">{t('shipments.receiver')}</th>
+              <th className="px-4 py-3 text-left text-sm font-semibold text-gray-600">{t('adminCargo.photo')}</th>
               <th className="px-4 py-3 text-left text-sm font-semibold text-gray-600">{t('shipments.weight')}</th>
               <th className="px-4 py-3 text-left text-sm font-semibold text-gray-600">{t('shipments.price')}</th>
               <th className="px-4 py-3 text-left text-sm font-semibold text-gray-600">{t('shipments.status')}</th>
@@ -516,11 +659,11 @@ export default function AdminCargo() {
           <tbody className="divide-y divide-gray-200">
             {loading ? (
               <tr>
-                <td colSpan={9} className="text-center py-8 text-gray-500">{t('common.loading')}</td>
+                <td colSpan={10} className="text-center py-8 text-gray-500">{t('common.loading')}</td>
               </tr>
             ) : filteredShipments.length === 0 ? (
               <tr>
-                <td colSpan={9} className="text-center py-8 text-gray-500">{t('common.noData')}</td>
+                <td colSpan={10} className="text-center py-8 text-gray-500">{t('common.noData')}</td>
               </tr>
             ) : (
               filteredShipments.map((shipment) => (
@@ -542,6 +685,24 @@ export default function AdminCargo() {
                   <td className="px-4 py-3 text-sm font-medium text-gray-800">{shipment.trackingCode}</td>
                   <td className="px-4 py-3 text-sm text-gray-600">{shipment.senderName}</td>
                   <td className="px-4 py-3 text-sm text-gray-600">{shipment.receiverName}</td>
+                  <td className="px-4 py-3">
+                    {shipment.qrCode ? (
+                      <button
+                        type="button"
+                        onClick={() => setPreviewPhoto(shipment.qrCode)}
+                        className="block rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                        title={t('adminCargo.enlargePhoto')}
+                      >
+                        <img
+                          src={shipment.qrCode}
+                          alt={`${shipment.trackingCode} ${t('adminCargo.photo')}`}
+                          className="h-12 w-12 rounded-md object-cover"
+                        />
+                      </button>
+                    ) : (
+                      <div className="h-12 w-12" aria-label={t('adminCargo.noPhoto')} />
+                    )}
+                  </td>
                   <td className="px-4 py-3 text-sm text-gray-600">{shipment.weight} kg</td>
                   <td className="px-4 py-3 text-sm text-gray-600">${shipment.price}</td>
                   <td className="px-4 py-3">
@@ -557,14 +718,21 @@ export default function AdminCargo() {
                       <button
                         onClick={() => openRouteModal(shipment)}
                         className="p-1 text-primary-500 hover:text-primary-700 hover:bg-primary-50 rounded transition"
-                        title={t('shipments.editRoute') || 'Ugry täzele'}
+                        title={t('shipments.editRoute') || 'Rotayı düzenle'}
                       >
-                        <PencilIcon className="h-4 w-4" />
+                        <MapIcon className="h-4 w-4" />
                       </button>
                     </div>
                   </td>
                   <td className="px-4 py-3">
-                    <div className="flex items-center">
+                    <div className="flex items-center gap-1">
+                      <button
+                        className="text-primary-500 hover:text-primary-700 transition-colors p-1.5 rounded-lg hover:bg-primary-50"
+                        onClick={() => openEditModal(shipment)}
+                        title={t('adminCargo.editShipment')}
+                      >
+                        <PencilIcon className="h-5 w-5" />
+                      </button>
                       <button 
                         className="text-red-500 hover:text-red-700 transition-colors p-1.5 rounded-lg hover:bg-red-50"
                         onClick={() => handleDelete(shipment.id)}
@@ -580,6 +748,32 @@ export default function AdminCargo() {
           </tbody>
         </table>
       </div>
+
+      {previewPhoto && (
+        <div
+          className="fixed inset-0 z-[70] flex items-center justify-center bg-black/75 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-label={t('adminCargo.photoPreview')}
+          onClick={() => setPreviewPhoto(null)}
+        >
+          <div className="relative max-h-full max-w-4xl" onClick={(e) => e.stopPropagation()}>
+            <button
+              type="button"
+              onClick={() => setPreviewPhoto(null)}
+              className="absolute -right-2 -top-2 rounded-full bg-white p-1.5 text-gray-700 shadow hover:bg-gray-100"
+              aria-label="Kapat"
+            >
+              <XMarkIcon className="h-6 w-6" />
+            </button>
+            <img
+              src={previewPhoto}
+              alt={t('adminCargo.photo')}
+              className="max-h-[85vh] max-w-full rounded-lg object-contain shadow-2xl"
+            />
+          </div>
+        </div>
+      )}
 
       {pendingDeleteId && (
         <div
@@ -618,6 +812,160 @@ export default function AdminCargo() {
                 {deleting ? t('common.loading') : t('common.delete')}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Shipment Modal */}
+      {showEditModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-white border-b border-gray-200 p-4 flex justify-between items-center">
+              <h2 className="text-xl font-bold text-gray-800">{t('adminCargo.editShipment')}</h2>
+              <button
+                type="button"
+                onClick={() => setShowEditModal(false)}
+                className="p-2 hover:bg-gray-100 rounded-lg transition"
+                aria-label="Kapat"
+              >
+                <XMarkIcon className="h-6 w-6 text-gray-500" />
+              </button>
+            </div>
+
+            <form noValidate onSubmit={handleEditSubmit} className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('shipments.sender') || 'Gönderici'}</label>
+                <input
+                  type="text"
+                  name="senderName"
+                  value={editData.senderName}
+                  onChange={handleEditInputChange}
+                  onFocus={(e) => {
+                    if (e.currentTarget.value === '*') e.currentTarget.select()
+                  }}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  {t('shipments.receiver') || 'Alıcı'} <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  name="receiverName"
+                  value={editData.receiverName}
+                  onChange={handleEditInputChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  {t('admin.cargoForm.receiverPhone')} <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="tel"
+                  name="receiverPhone"
+                  value={editData.receiverPhone}
+                  onChange={handleEditInputChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('shipments.weight') || 'Ağırlık'} (kg)</label>
+                  <input
+                    type="text"
+                    name="weight"
+                    value={editData.weight}
+                    onChange={handleEditInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('shipments.price') || 'Fiyat'} ($)</label>
+                  <input
+                    type="text"
+                    name="price"
+                    value={editData.price}
+                    onChange={handleEditInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('adminCargo.photo')}</label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => setEditPhoto(e.target.files?.[0] || null)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg file:mr-3 file:border-0 file:bg-primary-50 file:px-3 file:py-1 file:text-sm file:font-medium file:text-primary-700 hover:file:bg-primary-100"
+                />
+                <p className="mt-1 text-xs text-gray-500">{t('adminCargo.newPhotoKeepsExisting')}</p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  {t('shipments.route') || 'Rota'} <span className="text-red-500">*</span>
+                </label>
+                <div className="space-y-2">
+                  {editData.route.map((stop, index) => (
+                    <div key={index} className="flex items-center gap-2">
+                      <span className="text-gray-400 font-medium">
+                        {index === 0 ? t('adminCargo.origin') : index === editData.route.length - 1 ? t('adminCargo.destination') : t('adminCargo.stop', { number: index + 1 })}
+                      </span>
+                      <input
+                        type="text"
+                        value={stop}
+                        onChange={(e) => handleEditRouteChange(index, e.target.value)}
+                        className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                      />
+                      {editData.route.length > 2 && (
+                        <button
+                          type="button"
+                          onClick={() => removeEditRouteStop(index)}
+                          className="p-1 text-red-500 hover:text-red-700"
+                          title={t('adminCargo.removeStop')}
+                        >
+                          <MinusCircleIcon className="h-5 w-5" />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                {editData.route.length < 8 && (
+                  <button
+                    type="button"
+                    onClick={addEditRouteStop}
+                    className="mt-2 flex items-center gap-1 text-sm text-primary-600 hover:text-primary-700"
+                  >
+                    <PlusCircleIcon className="h-5 w-5" />
+                    {t('adminCargo.addStop')}
+                  </button>
+                )}
+              </div>
+
+              <div className="flex gap-3 pt-4 border-t border-gray-200">
+                <button
+                  type="submit"
+                  disabled={editing}
+                  className="flex-1 px-4 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600 transition disabled:opacity-60"
+                >
+                  {editing ? t('common.loading') : t('common.save') || 'Kaydet'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowEditModal(false)}
+                  disabled={editing}
+                  className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition disabled:opacity-60"
+                >
+                  {t('common.cancel') || 'İptal'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
@@ -810,21 +1158,21 @@ export default function AdminCargo() {
               </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="p-6 space-y-4">
+            <form noValidate onSubmit={handleSubmit} className="p-6 space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  {t('shipments.sender') || 'Iberiji'} <span className="text-red-500">*</span>
+                  {t('shipments.sender') || 'Iberiji'}
                 </label>
                 <input
                   type="text"
                   name="senderName"
                   value={formData.senderName}
                   onChange={handleInputChange}
+                  onFocus={(e) => {
+                    if (e.currentTarget.value === '*') e.currentTarget.select()
+                  }}
                   placeholder={t('admin.cargoForm.senderPlaceholder')}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                  pattern="[a-zA-ZğüşıöçĞÜŞİÖÇ\s]+"
-                  title={t('admin.cargoForm.senderPlaceholder')}
-                  required
                 />
               </div>
 
@@ -865,7 +1213,7 @@ export default function AdminCargo() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  {t('shipments.weight') || 'Agram'} (kg) <span className="text-red-500">*</span>
+                  {t('shipments.weight') || 'Agram'} (kg)
                 </label>
                 <input
                   type="text"
@@ -874,7 +1222,6 @@ export default function AdminCargo() {
                   onChange={handleInputChange}
                   placeholder={t('admin.cargoForm.weightPlaceholder')}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                  required
                 />
               </div>
 
@@ -906,6 +1253,21 @@ export default function AdminCargo() {
                   <p className="text-xs text-gray-500 mt-1">
                     {t('admin.cargoForm.autoPrice')}: {formData.weight}kg × $2.5 = ${calculatePrice(parseFloat(formData.weight))}
                   </p>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  {t('adminCargo.photo')}
+                </label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => setSelectedPhoto(e.target.files?.[0] || null)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg file:mr-3 file:border-0 file:bg-primary-50 file:px-3 file:py-1 file:text-sm file:font-medium file:text-primary-700 hover:file:bg-primary-100"
+                />
+                {selectedPhoto && (
+                  <p className="mt-1 text-xs text-gray-500">{t('adminCargo.selectedFile', { name: selectedPhoto.name })}</p>
                 )}
               </div>
 

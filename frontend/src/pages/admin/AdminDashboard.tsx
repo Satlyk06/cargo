@@ -33,9 +33,9 @@ export default function AdminDashboard() {
         headers: { Authorization: `Bearer ${token}` },
       })
       if (res.ok) setStats(await res.json())
-      else toast.error(t('admin.stats.error') || 'İstatistikler yüklenemedi')
+      else toast.error(t('admin.stats.error'))
     } catch {
-      toast.error(t('admin.stats.error') || 'İstatistikler yüklenemedi')
+      toast.error(t('admin.stats.error'))
     } finally {
       setLoading(false)
     }

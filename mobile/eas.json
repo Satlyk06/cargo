@@ -1,5 +1,12 @@
 {
   "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://cargo-qujk.onrender.com/api"
+      }
+    },
     "preview": {
       "distribution": "internal",
       "android": {

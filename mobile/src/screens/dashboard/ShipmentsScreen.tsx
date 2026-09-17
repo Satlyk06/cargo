@@ -42,7 +42,6 @@ export default function ShipmentsScreen() {
   const [refreshing, setRefreshing] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [activeFilter, setActiveFilter] = useState('all')
-  const lastFetched = useRef<number>(0)
   const inputRef = useRef<TextInput>(null)
 
   const fetchShipments = useCallback(async () => {
@@ -57,17 +56,12 @@ export default function ShipmentsScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      const now = Date.now()
-      if (now - lastFetched.current > 30_000) {
-        lastFetched.current = now
-        void fetchShipments()
-      }
-    }, [fetchShipments]),
+      void refreshShipments()
+    }, [refreshShipments]),
   )
 
   const onRefresh = () => {
     setRefreshing(true)
-    lastFetched.current = Date.now()
     fetchShipments()
   }
 

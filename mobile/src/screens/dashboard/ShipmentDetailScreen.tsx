@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import {
   View,
+  Image,
   Text,
   ScrollView,
   ActivityIndicator,
@@ -31,6 +32,7 @@ interface ShipmentDetail {
   createdAt: string
   shippedAt: string | null
   deliveredAt: string | null
+  qrCode?: string | null
 }
 
 export default function ShipmentDetailScreen() {
@@ -114,6 +116,7 @@ export default function ShipmentDetailScreen() {
   const pct = totalCount > 0 ? (passedCount / totalCount) * 100 : 0
   const isComplete = pct === 100
   const st = getStatusColor(shipment.status)
+  const photoUrl = shipment.qrCode?.startsWith('data:image/') ? shipment.qrCode : null
 
   return (
     <MainLayout title={t('common.shipments')}>
@@ -143,6 +146,13 @@ export default function ShipmentDetailScreen() {
             <Ionicons name="copy-outline" size={16} color="#6366f1" />
           </TouchableOpacity>
         </View>
+
+        {photoUrl && (
+          <View style={styles.photoCard}>
+            <Text style={styles.photoTitle}>Paket fotoğrafı</Text>
+            <Image source={{ uri: photoUrl }} style={styles.photo} resizeMode="cover" />
+          </View>
+        )}
 
         {/* Gönderici - Alıcı */}
         <View style={styles.infoCard}>
@@ -357,6 +367,25 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '700',
     color: '#0f172a',
+  },
+  photoCard: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+  },
+  photoTitle: {
+    color: '#475569',
+    fontSize: 13,
+    fontWeight: '700',
+    marginBottom: 10,
+  },
+  photo: {
+    width: '100%',
+    height: 220,
+    borderRadius: 10,
+    backgroundColor: '#f1f5f9',
   },
   infoCard: {
     backgroundColor: '#fff',

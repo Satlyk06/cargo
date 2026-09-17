@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef } from 'react'
+import React, { useState, useCallback } from 'react'
 import { useFocusEffect } from '@react-navigation/native'
 import {
   View,
@@ -25,7 +25,6 @@ export default function NotificationsScreen() {
   const [refreshing, setRefreshing] = useState(false)
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [confirmState, setConfirmState] = useState<{ type: 'deleteOne' | 'deleteSelected' | 'deleteAll'; id?: string } | null>(null)
-  const lastFetched = useRef<number>(0)
 
   const fetchNotifications = useCallback(async () => {
     try {
@@ -39,17 +38,12 @@ export default function NotificationsScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      const now = Date.now()
-      if (now - lastFetched.current > 30_000) {
-        lastFetched.current = now
-        void fetchNotifications()
-      }
-    }, [fetchNotifications]),
+      void refreshNotifications()
+    }, [refreshNotifications]),
   )
 
   const onRefresh = () => {
     setRefreshing(true)
-    lastFetched.current = Date.now()
     fetchNotifications()
   }
 

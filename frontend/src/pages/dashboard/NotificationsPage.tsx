@@ -172,7 +172,7 @@ export default function NotificationsPage() {
       })
       if (res.ok) {
         setNotifications(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n))
-        toast.success(t('notifications.markAsRead') || 'Okundu')
+        toast.success(t('notifications.markAsRead'))
       }
     } catch { toast.error(t('common.error')) }
   }
@@ -343,7 +343,7 @@ export default function NotificationsPage() {
               {t('notifications.noNotifications')}
             </h3>
             <p className="text-xs text-slate-400 max-w-sm mx-auto">
-              {t('notifications.emptyStateSub', { defaultValue: 'Yeni bir bildirim geldiğinde burada görünecektir.' })}
+              {t('notifications.emptyStateSub')}
             </p>
           </div>
         ) : (
@@ -412,12 +412,12 @@ export default function NotificationsPage() {
 
                         {!notification.isRead ? (
                           <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-indigo-100 text-indigo-700">
-                            {t('notifications.unread') || 'Yeni'}
+                            {t('notifications.unread')}
                           </span>
                         ) : (
                           <span className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-400">
                             <CheckIcon className="w-3 h-3 text-emerald-500" />
-                            {t('notifications.read') || 'Okundu'}
+                            {t('notifications.read')}
                           </span>
                         )}
                       </div>
@@ -429,7 +429,7 @@ export default function NotificationsPage() {
                         <button
                           onClick={() => markAsRead(notification.id)}
                           className="p-1.5 rounded-xl text-indigo-600 hover:bg-indigo-100/60 transition-colors"
-                          title={t('notifications.markAsRead') || 'Okundu İşaretle'}
+                          title={t('notifications.markAsRead')}
                         >
                           <CheckIcon className="h-4 w-4" />
                         </button>

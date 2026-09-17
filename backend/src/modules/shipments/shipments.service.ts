@@ -215,6 +215,9 @@ export class ShipmentsService {
     if (shipmentData.deliveredAt !== undefined) {
       shipment.deliveredAt = shipmentData.deliveredAt;
     }
+    if (shipmentData.qrCode !== undefined) {
+      shipment.qrCode = shipmentData.qrCode;
+    }
 
     return await this.shipmentRepository.save(shipment);
   }
@@ -224,6 +227,9 @@ export class ShipmentsService {
     if (!shipment) {
       throw new NotFoundException('Kargo bulunamadı');
     }
+
+    // Kargoya bağlı tüm bildirimleri kullanıcıların listesinden kaldır.
+    await this.notificationsService.deleteByShipmentId(shipment.id);
     await this.shipmentRepository.delete(id);
   }
 
