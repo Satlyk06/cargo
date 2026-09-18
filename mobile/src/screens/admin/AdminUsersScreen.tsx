@@ -16,6 +16,7 @@ export default function AdminUsersScreen() {
   const { user: currentUser } = useAuth()
   const [users, setUsers] = useState<User[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(false)
   const [query, setQuery] = useState('')
   const [selectedUser, setSelectedUser] = useState<User | null>(null)
   const [userShipments, setUserShipments] = useState<Shipment[]>([])
@@ -29,8 +30,18 @@ export default function AdminUsersScreen() {
   const [savingUser, setSavingUser] = useState(false)
 
   const load = useCallback(async () => {
-    try { setUsers((await api.get<User[]>('/users')).data) }
-    catch (error) { console.error('Unable to load users:', error); Alert.alert(t('common.error'), t('adminUsers.loadError')) }
+    setLoading(true)
+    setLoadError(false)
+    try {
+      const { data } = await api.get<User[]>('/users')
+      if (!Array.isArray(data)) throw new Error('Unexpected users response')
+      setUsers(data)
+    }
+    catch (error) {
+      console.error('Unable to load users:', error)
+      setLoadError(true)
+      Alert.alert(t('common.error'), t('adminUsers.loadError'))
+    }
     finally { setLoading(false) }
   }, [t])
   useEffect(() => { void load() }, [load])
@@ -171,7 +182,8 @@ export default function AdminUsersScreen() {
                 </View>
               ))
             )}
-            {!loading && !filtered.length && <Text style={styles.empty}>{t('adminUsers.noUsers')}</Text>}
+            {!loading && loadError && <Text style={styles.empty}>{t('adminUsers.loadError')}</Text>}
+            {!loading && !loadError && !filtered.length && <Text style={styles.empty}>{t('adminUsers.noUsers')}</Text>}
           </ScrollView>
         </View>
       </MainLayout>

@@ -1,9 +1,10 @@
 import axios from 'axios'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 
-// API URL - can be overridden with EXPO_PUBLIC_API_URL environment variable
-// For physical device testing, use your computer's LAN IP
-const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://10.61.74.52:3001/api'
+// API URL can be overridden with EXPO_PUBLIC_API_URL.  Do not use a machine
+// specific LAN address as the fallback: a release build (or another device)
+// would then silently talk to a different, often empty, backend.
+const API_URL = process.env.EXPO_PUBLIC_API_URL || 'https://cargo-qujk.onrender.com/api'
 
 const api = axios.create({
   baseURL: API_URL,

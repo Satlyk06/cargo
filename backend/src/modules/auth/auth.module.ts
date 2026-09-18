@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 import { TypeOrmModule } from '@nestjs/typeorm';
@@ -13,9 +14,13 @@ import { UsersModule } from '../users/users.module';
     TypeOrmModule.forFeature([User]),
     UsersModule,
     PassportModule,
-    JwtModule.register({
-      secret: process.env.JWT_SECRET || 'benim_gizli_anahtarim_123456',
-      signOptions: { expiresIn: '30d' }, // ← 30 gün
+    JwtModule.registerAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) => ({
+        secret: configService.get<string>('JWT_SECRET') || 'benim_gizli_anahtarim_123456',
+        signOptions: { expiresIn: '30d' },
+      }),
     }),
   ],
   providers: [AuthService, JwtStrategy],
